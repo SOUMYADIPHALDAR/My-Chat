@@ -1,0 +1,98 @@
+const asyncHandler = require("../utils/asyncHandler.js");
+const apiError = require("../utils/apiError.js");
+const apiResponse = require("../utils/apiResponse.js");
+const User = require("../models/user.model.js");
+const uploadImageToCloudinary = require("../config/cloudinary.js");
+
+const generateAccessAndRefreshToken = async(userId) => {
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken(userId);
+    const refreshToken = user.generateRefreshToken(userId);
+
+    user.refreshToken = refreshToken;
+    await User.save({validateBeforeSave: true});
+
+    return {accessToken, refreshToken};
+}
+
+const registerUser = asyncHandler(async(req, res) => {
+    const { fullName, userName, email, password } = req.body;
+    if (!fullName || !userName || !email || !password) {
+        throw new apiError(400, "All fields are required..");
+    }
+
+    const existingUser = await User.findOne({$or: [{userName}, {email}]});
+    if (existingUser) {
+        throw new apiError(400, "User already exists..");
+    }
+
+    const avatarFilePath = req.file.avatar[0].path;
+    if (!avatarFilePath) {
+        throw new apiError(404, "Avatar file is required..");
+    }
+
+    const avatar = await uploadImageToCloudinary(avatarFilePath);
+    if (!avatar) {
+        throw new apiError(404, "Avatar not found..")
+    }
+
+    const user = await User.create({
+        fullName,
+        userName,
+        email,
+        avatar: avatar.secure_url,
+        avatarPublicId: avatar.public_id,
+        password
+    })
+
+    const createdUser = await User.findById(user._id).select("-password -refreshToken");
+    if (!createdUser) {
+        throw new apiError(500, "Something went wrong during registration process.. Please try again..");
+    }
+
+    return res.status(201).json(
+        new apiResponse(200, createdUser, "User registered successfully...")
+    )
+});
+
+const logIn = asyncHandler(async(req, res) => {
+    const { userName, email, password } = req.body;
+    if (!userName || !email) {
+        throw new apiError(400, "User name and email are required..");
+    }
+    const user = await User.findOne({$or: [{userName}, {email}]});
+    if(!user) {
+        throw new apiError(404, "User not found..");
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password);
+    if (!isPasswordValid) {
+        throw new apiError(400, "Wrong password..");
+    }
+
+    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+    const option = {
+        httpOnly: true,
+        secure: true
+    };
+
+    return res.status(200)
+    .cookie("accessToken", accessToken, option)
+    .cookie("refreshToken", refreshToken, option)
+    .json(
+        new apiResponse(
+            200,
+            {
+                user: loggedInUser, accessToken, refreshToken
+            },
+            "User logged in successfully.."
+        )
+    )
+})
+
+module.exports = {
+    registerUser,
+    logIn
+}
