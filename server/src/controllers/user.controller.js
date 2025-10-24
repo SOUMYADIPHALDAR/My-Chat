@@ -10,7 +10,7 @@ const generateAccessAndRefreshToken = async(userId) => {
     const refreshToken = user.generateRefreshToken(userId);
 
     user.refreshToken = refreshToken;
-    await User.save({validateBeforeSave: true});
+    await user.save({validateBeforeSave: true});
 
     return {accessToken, refreshToken};
 }
@@ -25,8 +25,8 @@ const registerUser = asyncHandler(async(req, res) => {
     if (existingUser) {
         throw new apiError(400, "User already exists..");
     }
-
-    const avatarFilePath = req.file.avatar[0].path;
+    
+    const avatarFilePath = req.file?.path;
     if (!avatarFilePath) {
         throw new apiError(404, "Avatar file is required..");
     }
@@ -60,7 +60,7 @@ const logIn = asyncHandler(async(req, res) => {
     if (!userName || !email) {
         throw new apiError(400, "User name and email are required..");
     }
-    const user = await User.findOne({$or: [{userName}, {email}]});
+    const user = await User.findOne({$or: [{userName}, {email}]}).select("+password");
     if(!user) {
         throw new apiError(404, "User not found..");
     }
@@ -90,9 +90,36 @@ const logIn = asyncHandler(async(req, res) => {
             "User logged in successfully.."
         )
     )
-})
+});
+
+const logOut = asyncHandler(async(req, res) => {
+    await User.findById(
+        req.user._id,
+        {
+            $set: {refreshToken: undefined}
+        },
+        {new: true}
+    );
+    const option = {
+        httpOnly: true,
+        secure: true
+    };
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, option)
+    .cookie("refreshToken", refreshToken, option)
+    .json(
+        new apiResponse(
+            200,
+            "",
+            "User logged out successfully"
+        )
+    )
+});
 
 module.exports = {
     registerUser,
-    logIn
+    logIn,
+    logOut
 }

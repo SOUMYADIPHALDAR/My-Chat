@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Schema = mongoose.Schema();
+const Schema = mongoose.Schema;
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
@@ -27,11 +27,10 @@ const userSchema = new Schema({
 
 }, {timestamps: true});
 
-userSchema.pre("save", async(next) => {
-    if (this.isModified("password")) {
-        this.password = bcrypt.hash(this.password, 10);
-        next();
-    }
+userSchema.pre("save", async function(next) {
+    if (!this.isModified("password")) return next();
+    this.password = await bcrypt.hash(this.password, 10);
+    next();
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
@@ -55,7 +54,7 @@ userSchema.methods.generateRefreshToken = function() {
         {
             _id: this._id
         },
-        process.env.REFRSH_TOKEN_SECRET,
+        process.env.REFRESH_TOKEN_SECRET,
         {
             expiresIn: process.env.REFRESH_TOKEN_EXPIRY
         }
