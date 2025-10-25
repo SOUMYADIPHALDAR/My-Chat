@@ -154,11 +154,33 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
     } catch (error) {
         throw new apiError(500, error.message);
     }
-})
+});
+
+const updatePassword = asyncHandler(async(req, res) => {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    const user = await User.findById(req.user._id);
+    const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+    if (!isPasswordValid) {
+        throw new apiError(400, "Invalid password..");
+    }
+
+    if (newPassword !== confirmPassword) {
+        throw new apiError(400, "Your new password and confirm password must be same...");
+    }
+
+    user.password = newPassword;
+    await User.save({validateBeforeSave: true});
+
+    return res.status(200).json(
+        new apiResponse(200, "Password changed successfully...")
+    )
+});
 
 module.exports = {
     registerUser,
     logIn,
     logOut,
-    refreshAccessToken
+    refreshAccessToken,
+    updatePassword
 }
