@@ -3,6 +3,7 @@ const apiError = require("../utils/apiError.js");
 const apiResponse = require("../utils/apiResponse.js");
 const User = require("../models/user.model.js");
 const uploadImageToCloudinary = require("../config/cloudinary.js");
+const cloudinary = require("cloudinary").v2;
 
 const generateAccessAndRefreshToken = async(userId) => {
     const user = await User.findById(userId);
@@ -177,10 +178,71 @@ const updatePassword = asyncHandler(async(req, res) => {
     )
 });
 
+const updateAccountDetails = asyncHandler(async(req, res) => {
+    const { fullName, email } = req.body;
+    if (!fullName || !email) {
+        throw new apiError(400, "Full name and email is required..");
+    }
+
+    const updatedAccount = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                fullName, 
+                email
+            }
+        },
+        {new: true}
+    ).select("-password");
+
+    return res.status(200).json(
+        new apiResponse(200, updatedAccount, "Account updated successfully..")
+    )
+});
+
+const updateAvatar = asyncHandler(async(req, res) => {
+    const avatarLocalPath = req.file?.path;
+    if (!avatarLocalPath) {
+        throw new apiError(404, "Avatar file is required..");
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (user.avatarPublicId) {
+        try {
+            await cloudinary.uploader.destroy(user.avatarPublicId, {resource_type: "image"});
+        } catch (error) {
+            throw new apiError(400, "Failed to change the avatar..", error.message);
+        }
+    }
+
+    const avatar = await uploadImageToCloudinary(avatarLocalPath);
+    if (!avatar.secure_url || !avatar.public_id) {
+        throw new apiError(500, "Something happend during uploading the image..");
+    }
+
+    const updatedAvatar = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                avatar: avatar.secure_url,
+                avatarPublicId: avatar.public_id
+            }
+        },
+        { new: true }
+    ).select("-password");
+
+    return res.status(200).json(
+        new apiResponse(200, updatedAvatar, "Avatar updated successfully..")
+    )
+})
+
 module.exports = {
     registerUser,
     logIn,
     logOut,
     refreshAccessToken,
-    updatePassword
+    updatePassword,
+    updateAccountDetails,
+    updateAvatar
 }
