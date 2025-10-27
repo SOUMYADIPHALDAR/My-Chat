@@ -4,6 +4,7 @@ const apiResponse = require("../utils/apiResponse.js");
 const User = require("../models/user.model.js");
 const uploadImageToCloudinary = require("../config/cloudinary.js");
 const cloudinary = require("cloudinary").v2;
+const jwt = require("jsonwebtoken");
 
 const generateAccessAndRefreshToken = async(userId) => {
     const user = await User.findById(userId);
@@ -34,7 +35,7 @@ const registerUser = asyncHandler(async(req, res) => {
 
     const avatar = await uploadImageToCloudinary(avatarFilePath);
     if (!avatar) {
-        throw new apiError(404, "Avatar not found..")
+        throw new apiError(404, "Avatar not found..");
     }
 
     const user = await User.create({
@@ -94,7 +95,7 @@ const logIn = asyncHandler(async(req, res) => {
 });
 
 const logOut = asyncHandler(async(req, res) => {
-    await User.findById(
+    await User.findByIdAndUpdate(
         req.user._id,
         {
             $set: {refreshToken: undefined}
@@ -108,15 +109,15 @@ const logOut = asyncHandler(async(req, res) => {
 
     return res
     .status(200)
-    .cookie("accessToken", accessToken, option)
-    .cookie("refreshToken", refreshToken, option)
+    .clearCookie("accessToken", option)
+    .clearCookie("refreshToken", option)
     .json(
         new apiResponse(
             200,
             "",
             "User logged out successfully"
         )
-    )
+    );
 });
 
 const refreshAccessToken = asyncHandler(async(req, res) => {
@@ -126,10 +127,10 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
     }
 
     try {
-        const decodedToken = jwt.vrify(isComingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+        const decodedToken = jwt.verify(isComingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
         const user = await User.findById(decodedToken._id);
         if (!user) {
-            throw new apiError(404, "Invalid token..")
+            throw new apiError(404, "Invalid token..");
         }
 
         if (isComingRefreshToken !== user?.refreshToken) {
@@ -144,7 +145,7 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
 
         return res
         .status(200)
-        .cookie("accesstoken", accessToken, option)
+        .cookie("accessToken", accessToken, option)
         .cookie("refreshToken", newRefreshToken, option)
         .json(new apiResponse(
             200,
@@ -171,11 +172,11 @@ const updatePassword = asyncHandler(async(req, res) => {
     }
 
     user.password = newPassword;
-    await User.save({validateBeforeSave: true});
+    await user.save({validateBeforeSave: true});
 
     return res.status(200).json(
         new apiResponse(200, "Password changed successfully...")
-    )
+    );
 });
 
 const updateAccountDetails = asyncHandler(async(req, res) => {
@@ -197,7 +198,7 @@ const updateAccountDetails = asyncHandler(async(req, res) => {
 
     return res.status(200).json(
         new apiResponse(200, updatedAccount, "Account updated successfully..")
-    )
+    );
 });
 
 const updateAvatar = asyncHandler(async(req, res) => {
@@ -234,8 +235,8 @@ const updateAvatar = asyncHandler(async(req, res) => {
 
     return res.status(200).json(
         new apiResponse(200, updatedAvatar, "Avatar updated successfully..")
-    )
-})
+    );
+});
 
 module.exports = {
     registerUser,
