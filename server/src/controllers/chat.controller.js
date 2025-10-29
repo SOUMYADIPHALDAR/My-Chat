@@ -4,7 +4,7 @@ const apiResponse = require("../utils/apiResponse.js");
 const Chat = require("../models/chat.model.js");
 const User = require("../models/user.model.js");
 
-const createChat = asyncHandler(async(req, res) => {
+const accessChat = asyncHandler(async(req, res) => {
     const { chatName, isGroupChat } = req.body;
     const { userId } = req.body;
 
@@ -40,6 +40,28 @@ const createChat = asyncHandler(async(req, res) => {
     )
 });
 
+const fetchChat = asyncHandler(async(req, res) => {
+    const chats = await Chat.find({
+        users: {
+            $elemMatch: {$eq: req.user._id}
+        }
+    })
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password")
+    .populate("latestMessage")
+    .sort({updatedAt: -1})
+
+    return res.status(200).json(
+        new apiResponse(200, chats, "chats fetched successfully..")
+    )
+});
+
+const createGroupChat = asyncHandler(async(req, res) => {
+    
+})
+
 module.exports = {
-    createChat
+    accessChat,
+    fetchChat,
+    createGroupChat
 }
