@@ -57,8 +57,33 @@ const fetchChat = asyncHandler(async(req, res) => {
 });
 
 const createGroupChat = asyncHandler(async(req, res) => {
+    const { users, chatName } = req.body;
+    if (!users || !chatName) {
+        throw new apiError(400, "chatname and users are required..");
+    }
+
+    let usersArray = JSON.parse(users);
+    if (usersArray.length <= 2) {
+        throw new apiError(400, "Group chat must have 2 or 2+ users..");
+    }
+
+    usersArray.push(req.user._id);
+
+    const groupChat = await Chat.create({
+        chatName,
+        users: usersArray,
+        isGroupChat: true,
+        groupAdmin: req.user._id
+    })
     
-})
+    const finalChat = await Chat.findById(groupChat._id)
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password")
+
+    return res.status(200).json(
+        new apiResponse(200, finalChat, "Group chat created successfully..")
+    )
+});
 
 module.exports = {
     accessChat,
