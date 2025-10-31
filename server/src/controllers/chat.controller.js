@@ -63,8 +63,8 @@ const createGroupChat = asyncHandler(async(req, res) => {
     }
 
     let usersArray = JSON.parse(users);
-    if (usersArray.length <= 2) {
-        throw new apiError(400, "Group chat must have 2 or 2+ users..");
+    if (usersArray.length < 2) {
+        throw new apiError(400, "Group chat must have 2+ users..");
     }
 
     usersArray.push(req.user._id);
@@ -85,8 +85,43 @@ const createGroupChat = asyncHandler(async(req, res) => {
     )
 });
 
+const renameGroup = asyncHandler(async(req, res) => {
+    const { chatName } = req.body;
+    const { chatId } = req.params;
+
+    if (!chatName || !chatId) {
+        throw new apiError(400, "chatId and chatName are required..");
+    }
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+        throw new apiError(404, "chat not found..");
+    }
+
+    if (!chat.isGroupChat) {
+        throw new apiError(400, "Cannot rename a non-group chat..");
+    }
+
+    if (chat.groupAdmin?.toString() !== req.user._id.toString()) {
+        throw new apiError(403, "Only the group admin can rename the group..");
+    }
+
+    const updateChat = await Chat.findByIdAndUpdate(
+        chatId,
+        { chatName },
+        { new: true }
+    )
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password")
+
+    return res.status(200).json(
+        new apiResponse(200, updateChat, "Renamed group successfully..")
+    )
+});
+
 module.exports = {
     accessChat,
     fetchChat,
-    createGroupChat
+    createGroupChat,
+    renameGroup
 }
