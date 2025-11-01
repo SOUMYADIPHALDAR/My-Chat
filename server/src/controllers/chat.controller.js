@@ -8,12 +8,16 @@ const accessChat = asyncHandler(async(req, res) => {
     const { chatName, isGroupChat } = req.body;
     const { userId } = req.body;
 
-    if (!chatName || !isGroupChat) {
-        throw new apiError(400, "All fields are requried..");
+    if (typeof isGroupChat === "undefined") {
+        throw new apiError(400, "isGroupChat is required..")
     }
 
-    if (!userId) {
-        throw new apiError(400, "User id is required to create a chat..");
+    if (isGroupChat && !chatName) {
+        throw new apiError(400, "chatName is required for group chats..");
+    }
+
+    if (!isGroupChat && !userId) {
+        throw new apiError(400, "User id is required to create one to one chat..");
     }
 
     const existingChat = await Chat.findOne({
@@ -62,8 +66,14 @@ const createGroupChat = asyncHandler(async(req, res) => {
         throw new apiError(400, "chatname and users are required..");
     }
 
-    let usersArray = JSON.parse(users);
-    if (usersArray.length < 2) {
+    let usersArray;
+    try {
+        usersArray = typeof users === "string" ? JSON.parse(users) : users;
+    } catch (error) {
+        throw new apiError(400, "Invalid users payload..")
+    }
+
+    if (!Array.isArray(usersArray) || usersArray.length < 2) {
         throw new apiError(400, "Group chat must have 2+ users..");
     }
 
@@ -119,9 +129,53 @@ const renameGroup = asyncHandler(async(req, res) => {
     )
 });
 
+const addToGroupChat = asyncHandler(async(req, res) => {
+    const { chatId, userId } = req.body;
+    if (!chatId || !userId) {
+        throw new apiError(400, "chatId and userId are required..")
+    }
+
+    const chat = await Chat.findByIdAndUpdate(
+        chatId,
+        {
+            $push: {users: userId}
+        },
+        {new: true}
+    )
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password")
+
+    return res.status(200).json(
+        new apiResponse(200, chat, "Successfully added to the group chat..")
+    )
+});
+
+const removeFromGroupChat = asyncHandler(async(req, res) => {
+    const { chatId, userId } = req.body;
+    if (!chatId || !userId) {
+        throw new apiError(400, "chatId and userId are required..");
+    }
+
+    const chat = await Chat.findByIdAndUpdate(
+        chatId,
+        {
+            $pull: { users: userId }
+        },
+        { new: true }
+    )
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password")
+
+    return res.status(200).json(
+        new apiResponse(200, chat, "successfully remove from groupChat..")
+    )
+});
+
 module.exports = {
     accessChat,
     fetchChat,
     createGroupChat,
-    renameGroup
+    renameGroup,
+    addToGroupChat,
+    removeFromGroupChat
 }
