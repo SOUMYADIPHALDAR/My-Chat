@@ -66,7 +66,53 @@ const getMessages = asyncHandler(async(req, res) => {
     )
 });
 
+const deleteMessage = asyncHandler(async(req, res) => {
+    const { messageId } = req.params;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+        throw new apiError(404, "message not found..");
+    }
+
+    if (message.sender !== req.user._id) {
+        throw new apiError(403, "You can only delete your messages..");
+    }
+
+    await Message.findByIdAndDelete(messageId);
+
+    return res.status(200).json(
+        new apiResponse(200, "", "Message deleted successfully..")
+    )
+});
+
+const updateMessage = asyncHandler(async(req, res) => {
+    const { messageId } = req.params;
+    const { newContent } = req.body;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+        throw new apiError(404, "message not found..")
+    }
+
+    if (message.sender !== req.user._id) {
+        throw new apiError(403, "You can only update your messages..");
+    }
+
+    const updatedMessage = await Message.findByIdAndUpdate(
+        messageId,
+        {content: newContent},
+        {new: true}
+    )
+    .populate("users", "-password")
+
+    return res.status(200).json(
+        new apiResponse(200, updatedMessage, "message updated successfully..")
+    )
+});
+
 module.exports = {
     sendMessage,
-    getMessages
+    getMessages,
+    deleteMessage,
+    updateMessage
 }
