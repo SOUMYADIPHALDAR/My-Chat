@@ -85,6 +85,26 @@ const deleteMessage = asyncHandler(async(req, res) => {
     )
 });
 
+const deleteAllMessages = asyncHandler(async(req, res) => {
+    const { chatId } = req.params;
+
+    if (!chatId) {
+        throw new apiError(400, "Chat id is required..");
+    }
+
+    const chat = await Chat.findById(chatId);
+
+    if (!chat || chat.length === 0) {
+        throw new apiError(404, "Messages not found..");
+    }
+
+    await Message.deleteMany({ chat: chatId });
+
+    return res.status(200).json(
+        new apiResponse(200, "", "All messages are deleted successfully..")
+    )
+});
+
 const updateMessage = asyncHandler(async(req, res) => {
     const { messageId } = req.params;
     const { newContent } = req.body;
@@ -114,5 +134,6 @@ module.exports = {
     sendMessage,
     getMessages,
     deleteMessage,
+    deleteAllMessages,
     updateMessage
 }
