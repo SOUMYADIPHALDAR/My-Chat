@@ -3,6 +3,7 @@ const apiError = require("../utils/apiError.js");
 const apiResponse = require("../utils/apiResponse.js");
 const Chat = require("../models/chat.model.js");
 const User = require("../models/user.model.js");
+const Message = require("../models/message.model.js");
 
 const accessChat = asyncHandler(async(req, res) => {
     const { chatName, isGroupChat } = req.body;
@@ -16,7 +17,7 @@ const accessChat = asyncHandler(async(req, res) => {
         throw new apiError(400, "chatName is required for group chats..");
     }
 
-    if (!isGroupChat && !userId) {
+    if (isGroupChat && !userId) {
         throw new apiError(400, "User id is required to create one to one chat..");
     }
 
@@ -57,6 +58,33 @@ const fetchChat = asyncHandler(async(req, res) => {
 
     return res.status(200).json(
         new apiResponse(200, chats, "chats fetched successfully..")
+    )
+});
+
+const deleteChat = asyncHandler(async(req, res) => {
+    const { chatId } = req.params;
+
+    if (!chatId) {
+        throw new apiError(400, "Chat id is required..")
+    }
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+        throw new apiError(404, "No chat found..");
+    }
+
+    const messages = await Message.find({ chat: chatId });
+
+    if (!messages) {
+        throw new apiError(404, "There is no messages in this chat..");
+    }
+
+    await Message.deleteMany({chat: chatId});
+
+    await Chat.findByIdAndDelete(chatId);
+
+    return res.status(200).json(
+        new apiResponse(200, "", "Chat deleted successfully..")
     )
 });
 
@@ -174,6 +202,7 @@ const removeFromGroupChat = asyncHandler(async(req, res) => {
 module.exports = {
     accessChat,
     fetchChat,
+    deleteChat,
     createGroupChat,
     renameGroup,
     addToGroupChat,

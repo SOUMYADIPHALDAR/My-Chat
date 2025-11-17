@@ -53,6 +53,11 @@ const getMessages = asyncHandler(async(req, res) => {
         throw new apiError(404, "chat not found..")
     };
 
+    const isMember = chat.users.some(u => u.toString() === req.user._id.toString());
+    if (!isMember) {
+        throw new apiError(400, "You are not member in this chat..");
+    }
+
     const messages = await Message.find({chat: chatId})
     .populate("sender", "-password")
     .populate({
@@ -66,6 +71,31 @@ const getMessages = asyncHandler(async(req, res) => {
     )
 });
 
+const updateMessage = asyncHandler(async(req, res) => {
+    const { messageId } = req.params;
+    const { newContent } = req.body;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+        throw new apiError(404, "message not found..")
+    }
+
+    if (message.sender !== req.user._id) {
+        throw new apiError(403, "You can only update your messages..");
+    }
+
+    const updatedMessage = await Message.findByIdAndUpdate(
+        messageId,
+        {content: newContent},
+        {new: true}
+    )
+    .populate("users", "-password")
+
+    return res.status(200).json(
+        new apiResponse(200, updatedMessage, "message updated successfully..")
+    )
+});
+
 const deleteMessage = asyncHandler(async(req, res) => {
     const { messageId } = req.params;
 
@@ -74,7 +104,7 @@ const deleteMessage = asyncHandler(async(req, res) => {
         throw new apiError(404, "message not found..");
     }
 
-    if (message.sender !== req.user._id) {
+    if (message.sender.toString() !== req.user._id.toString()) {
         throw new apiError(403, "You can only delete your messages..");
     }
 
@@ -105,35 +135,10 @@ const deleteAllMessages = asyncHandler(async(req, res) => {
     )
 });
 
-const updateMessage = asyncHandler(async(req, res) => {
-    const { messageId } = req.params;
-    const { newContent } = req.body;
-
-    const message = await Message.findById(messageId);
-    if (!message) {
-        throw new apiError(404, "message not found..")
-    }
-
-    if (message.sender !== req.user._id) {
-        throw new apiError(403, "You can only update your messages..");
-    }
-
-    const updatedMessage = await Message.findByIdAndUpdate(
-        messageId,
-        {content: newContent},
-        {new: true}
-    )
-    .populate("users", "-password")
-
-    return res.status(200).json(
-        new apiResponse(200, updatedMessage, "message updated successfully..")
-    )
-});
-
 module.exports = {
     sendMessage,
     getMessages,
+    updateMessage,
     deleteMessage,
     deleteAllMessages,
-    updateMessage
 }
