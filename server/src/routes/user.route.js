@@ -8,7 +8,7 @@ router.post("/register", multer.single("avatar"), registerUser);
 router.post("/login", logIn);
 router.post("/logout", verifyJwt, logOut);
 router.put("/change-password", verifyJwt, updatePassword);
-router.put("/change-avatar", verifyJwt, updateAvatar)
+router.put("/change-avatar", verifyJwt, multer.single("avatar"), updateAvatar)
 router.put("/update-accountDetails", verifyJwt, updateAccountDetails);
 
 module.exports = router;

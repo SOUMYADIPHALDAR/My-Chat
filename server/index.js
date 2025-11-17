@@ -1,6 +1,7 @@
 const express = require("express");
 require("dotenv").config();
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const connectDb = require("./src/config/db");
 const authRouter = require("./src/routes/user.route.js");
 const chatRouter = require("./src/routes/chat.route.js");
@@ -11,6 +12,7 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cors());
+app.use(cookieParser());
 
 app.use("/user", authRouter);
 app.use("/chat", chatRouter);

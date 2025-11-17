@@ -45,7 +45,7 @@ const accessChat = asyncHandler(async(req, res) => {
     )
 });
 
-const fetchChat = asyncHandler(async(req, res) => {
+const fetchChats = asyncHandler(async(req, res) => {
     const chats = await Chat.find({
         users: {
             $elemMatch: {$eq: req.user._id}
@@ -53,7 +53,10 @@ const fetchChat = asyncHandler(async(req, res) => {
     })
     .populate("users", "-password")
     .populate("groupAdmin", "-password")
-    .populate("latestMessage")
+    .populate({
+        path: "latestMessage",
+        populate: {path: "sender", select: "fullName avatar email"}
+    })
     .sort({updatedAt: -1})
 
     return res.status(200).json(
@@ -201,7 +204,7 @@ const removeFromGroupChat = asyncHandler(async(req, res) => {
 
 module.exports = {
     accessChat,
-    fetchChat,
+    fetchChats,
     deleteChat,
     createGroupChat,
     renameGroup,
