@@ -18,7 +18,7 @@ const sendMessage = asyncHandler(async (req, res) => {
   const isMember = chat.users.some(
     (u) => u.toString() === req.user._id.toString()
   );
-  console.log(isMember);
+  
   if (!isMember) {
     throw new apiError(403, "You are not a member in this chat");
   }
@@ -82,7 +82,7 @@ const updateMessage = asyncHandler(async (req, res) => {
     throw new apiError(404, "message not found..");
   }
 
-  if (message.sender !== req.user._id) {
+  if (message.sender.toString() !== req.user._id.toString()) {
     throw new apiError(403, "You can only update your messages..");
   }
 
@@ -90,7 +90,7 @@ const updateMessage = asyncHandler(async (req, res) => {
     messageId,
     { content: newContent },
     { new: true }
-  ).populate("users", "-password");
+  );
 
   return res
     .status(200)

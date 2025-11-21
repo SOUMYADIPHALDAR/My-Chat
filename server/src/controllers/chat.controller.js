@@ -100,7 +100,7 @@ const createGroupChat = asyncHandler(async(req, res) => {
         throw new apiError(400, "chatname and users are required..");
     }
 
-     if (usersArray.includes(req.user._id.toString())) {
+     if (users.includes(req.user._id.toString())) {
         throw new apiError(400, "You can not add yourself as a number..")
     }
 
