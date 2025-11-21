@@ -6,15 +6,19 @@ const {
     createGroupChat,
     renameGroup,
     addToGroupChat,
-    removeFromGroupChat
+    removeFromGroupChat,
+    deleteChat,
+    deleteGroupChat
 } = require("../controllers/chat.controller.js");
 const verifyJwt = require("../middlewares/auth.middleware.js");
 
 router.post("/accesschat", verifyJwt, accessChat);
 router.get("/fetchchat", verifyJwt, fetchChats);
+router.delete("/deletechat/:chatId", verifyJwt, deleteChat);
 router.post("/create-groupchat", verifyJwt, createGroupChat);
-router.patch("/renamegroup", verifyJwt, renameGroup);
-router.patch("/add-to-groupchat", verifyJwt, addToGroupChat);
-router.patch("/remove-from-groupchat", verifyJwt, removeFromGroupChat);
+router.put("/renamegroup/:chatId", verifyJwt, renameGroup);
+router.put("/add-to-groupchat", verifyJwt, addToGroupChat);
+router.put("/remove-from-groupchat", verifyJwt, removeFromGroupChat);
+router.delete("/delete-groupchat/:chatId", verifyJwt, deleteGroupChat);
 
 module.exports = router;

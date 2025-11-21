@@ -32,7 +32,7 @@ const registerUser = asyncHandler(async(req, res) => {
     if (!avatarFilePath) {
         throw new apiError(404, "Avatar file is required..");
     }
-
+    
     const avatar = await uploadImageToCloudinary(avatarFilePath);
     if (!avatar) {
         throw new apiError(404, "Avatar not found..");

@@ -17,25 +17,28 @@ const accessChat = asyncHandler(async(req, res) => {
         throw new apiError(400, "chatName is required for group chats..");
     }
 
-    if (isGroupChat && !userId) {
+    if (!isGroupChat && !userId) {
         throw new apiError(400, "User id is required to create one to one chat..");
     }
 
-    const existingChat = await Chat.findOne({
-        isGroupChat: false,
-        users: {$all: [req.user._id, userId]}
-    }).populate("users", "-password");
+    let existingChat;
+    if (!isGroupChat) {
+        existingChat = await Chat.findOne({
+            isGroupChat: false,
+            users: [req.user._id, userId]
+        }).populate("users", "-password");
+    }
 
     if (existingChat) {
-        res.status(200).json(
-            new apiResponse(200, existingChat, "new chat created successfully..")
+        return res.status(200).json(
+            new apiError(200, existingChat, "Chat already exists..")
         )
     };
 
     const newChat = await Chat.create({
-        chatName,
+        chatName: isGroupChat ? chatName : "Private Chat",
         isGroupChat,
-        users: [req.user._id, userId]
+        users: isGroupChat ? [req.user._id] : [req.user._id, userId]
     });
 
     const finalChat = await Chat.findById(newChat._id).populate("users", "-password");
@@ -95,6 +98,10 @@ const createGroupChat = asyncHandler(async(req, res) => {
     const { users, chatName } = req.body;
     if (!users || !chatName) {
         throw new apiError(400, "chatname and users are required..");
+    }
+
+     if (usersArray.includes(req.user._id.toString())) {
+        throw new apiError(400, "You can not add yourself as a number..")
     }
 
     let usersArray;
@@ -161,10 +168,15 @@ const renameGroup = asyncHandler(async(req, res) => {
 });
 
 const addToGroupChat = asyncHandler(async(req, res) => {
-    const { chatId, userId } = req.body;
-    if (!chatId || !userId) {
+    const { chatId, users } = req.body;
+    if (!chatId || !users) {
         throw new apiError(400, "chatId and userId are required..")
     }
+
+    let usersArray = Array.isArray(users) ? users : JSON.parse(users);
+    usersArray = usersArray.filter(
+        (id) => id.toString() !== req.user._id.toString()
+    );
 
     const chat = await Chat.findByIdAndUpdate(
         chatId,
@@ -187,7 +199,13 @@ const removeFromGroupChat = asyncHandler(async(req, res) => {
         throw new apiError(400, "chatId and userId are required..");
     }
 
-    const chat = await Chat.findByIdAndUpdate(
+    const chat = await Chat.findById(chatId);
+
+    if (chat.users.length === 3) {
+        throw new apiError(400, "If you remove a member this chat will not be a group chat..")
+    }
+
+    const updatedChat = await Chat.findByIdAndUpdate(
         chatId,
         {
             $pull: { users: userId }
@@ -198,7 +216,28 @@ const removeFromGroupChat = asyncHandler(async(req, res) => {
     .populate("groupAdmin", "-password")
 
     return res.status(200).json(
-        new apiResponse(200, chat, "successfully remove from groupChat..")
+        new apiResponse(200, updatedChat, "successfully remove from groupChat..")
+    )
+});
+
+const deleteGroupChat = asyncHandler(async(req, res) => {
+    const { chatId } = req.params;
+
+    if (!chatId) {
+        throw new apiError(400, "Chat id is required..");
+    }
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+        throw new apiError(404, "No chat found..");
+    }
+
+    await Message.deleteMany({ chat: chatId });
+
+    await Chat.findByIdAndDelete(chatId);
+
+    return res.status(200).json(
+        new apiResponse(200, "", "Group chat deleted successfully..")
     )
 });
 
@@ -209,5 +248,6 @@ module.exports = {
     createGroupChat,
     renameGroup,
     addToGroupChat,
-    removeFromGroupChat
+    removeFromGroupChat,
+    deleteGroupChat
 }

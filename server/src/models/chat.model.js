@@ -10,10 +10,12 @@ const chatSchema = new Schema({
         type: Boolean,
         required: true
     },
-    admin: {
-        type: Schema.Types.ObjectId,
+   users: [
+    {
+        type: mongoose.Schema.Types.ObjectId,
         ref: "User"
-    },
+    }
+   ],
     latestMessage: {
         type: Schema.Types.ObjectId,
         ref: "Massege"
