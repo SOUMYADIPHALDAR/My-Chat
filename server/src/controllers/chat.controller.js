@@ -4,6 +4,7 @@ const apiResponse = require("../utils/apiResponse.js");
 const Chat = require("../models/chat.model.js");
 const User = require("../models/user.model.js");
 const Message = require("../models/message.model.js");
+const { userInChat, isGroupAdmin } = require("../utils/chatPermission.js");
 
 const accessChat = asyncHandler(async(req, res) => {
     const { chatName, isGroupChat } = req.body;
@@ -25,7 +26,7 @@ const accessChat = asyncHandler(async(req, res) => {
     if (!isGroupChat) {
         existingChat = await Chat.findOne({
             isGroupChat: false,
-            users: [req.user._id, userId]
+            users: { $all: [req.user._id, userId] }
         }).populate("users", "-password");
     }
 
@@ -150,9 +151,7 @@ const renameGroup = asyncHandler(async(req, res) => {
         throw new apiError(400, "Cannot rename a non-group chat..");
     }
 
-    if (chat.groupAdmin?.toString() !== req.user._id.toString()) {
-        throw new apiError(403, "Only the group admin can rename the group..");
-    }
+    await userInChat(chatId, req.user._id);
 
     const updateChat = await Chat.findByIdAndUpdate(
         chatId,
@@ -173,6 +172,8 @@ const addToGroupChat = asyncHandler(async(req, res) => {
         throw new apiError(400, "chatId and userId are required..")
     }
 
+    await isGroupAdmin(chatId, req.user._id);
+
     let usersArray = Array.isArray(users) ? users : JSON.parse(users);
     usersArray = usersArray.filter(
         (id) => id.toString() !== req.user._id.toString()
@@ -181,7 +182,7 @@ const addToGroupChat = asyncHandler(async(req, res) => {
     const chat = await Chat.findByIdAndUpdate(
         chatId,
         {
-            $push: {users: userId}
+           $addToSet: { users: { $each: usersArray } }
         },
         {new: true}
     )
@@ -201,7 +202,9 @@ const removeFromGroupChat = asyncHandler(async(req, res) => {
 
     const chat = await Chat.findById(chatId);
 
-    if (chat.users.length === 3) {
+    await isGroupAdmin(chatId, req.user._id);
+
+    if (chat.users.length <= 2) {
         throw new apiError(400, "If you remove a member this chat will not be a group chat..")
     }
 
@@ -231,6 +234,8 @@ const deleteGroupChat = asyncHandler(async(req, res) => {
     if (!chat) {
         throw new apiError(404, "No chat found..");
     }
+
+    await isGroupAdmin(chatId, req.user._id);
 
     await Message.deleteMany({ chat: chatId });
 
