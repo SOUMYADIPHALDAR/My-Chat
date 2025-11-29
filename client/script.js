@@ -1,7 +1,6 @@
-
 const API_BASE_URL = "http://localhost:5000";
-const REGISTER_ENDPOINT = "/user/register"; 
-const LOGIN_ENDPOINT = "/user/login";         
+const REGISTER_ENDPOINT = "/user/register";
+const LOGIN_ENDPOINT = "/user/login";
 
 /** Display text inside an element (e.g., error messages). */
 function showText(id, text) {
@@ -23,21 +22,17 @@ async function safeJson(res) {
   }
 }
 
-// ====================================================================
-//                           REGISTER HANDLER
-// ====================================================================
+// Registration part
 const registerBtn = document.getElementById("registerBtn");
 
 if (registerBtn) {
   registerBtn.addEventListener("click", (e) => {
     e.preventDefault();
-    console.log("REGISTER BUTTON CLICKED");
     performRegister();
   });
 }
 
 async function performRegister() {
-  console.log("performRegister() CALLED");
 
   const name = document.getElementById("regName").value.trim();
   const userName = document.getElementById("userName").value.trim();
@@ -46,16 +41,13 @@ async function performRegister() {
   const avatarInput = document.getElementById("regAvatar");
   const avatar = avatarInput.files[0];
 
-  console.log("Collected:", { name, email, password, avatar });
-
   if (!name || !userName || !email || !password || !avatar) {
-    console.log("registerError", "All fields including avatar are required.");
-    console.log("Missing fields");
+    showText("registerError", "All fields including avatar are required.");
     return;
   }
 
   const formData = new FormData();
-  formData.append("name", name);
+  formData.append("fullName", name);
   formData.append("userName", userName);
   formData.append("email", email);
   formData.append("password", password);
@@ -69,7 +61,7 @@ async function performRegister() {
   try {
     const res = await fetch(API_BASE_URL + REGISTER_ENDPOINT, {
       method: "POST",
-      body: formData
+      body: formData,
     });
 
     console.log("RESPONSE STATUS:", res.status);
@@ -82,45 +74,61 @@ async function performRegister() {
       data = JSON.parse(text);
     } catch {
       console.log("Response is not JSON");
-      show("registerError", "Server sent invalid JSON");
+      showText("registerError", "Server sent invalid JSON");
       return;
     }
 
     if (!res.ok) {
       console.log("SERVER ERROR:", data);
-      show("registerError", data.message || "Registration failed.");
+      showText("registerError", data.message || "Registration failed.");
       return;
     }
 
-    alert("Registration successful! Please login.");
-    redirect("login.html");
-
+    alert("Registration successful!");
+    window.location.href = "login.html";
   } catch (error) {
     console.log("FETCH ERROR:", error);
-    show("registerError", "Network / CORS error.");
+    showText("registerError", "Network / CORS error.");
   }
 }
-
 
 // ====================================================================
 //                           LOGIN HANDLER
 // ====================================================================
+// helper: simple email validator
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 async function performLogin() {
   showText("loginError", "");
 
-  const email = (document.getElementById("email") || {}).value || "";
-  const password = (document.getElementById("password") || {}).value || "";
+  const email = (document.getElementById("email") || {}).value.trim();
+  const loginUserName = (document.getElementById("loginUserName") || {}).value.trim();
+  const password = (document.getElementById("password") || {}).value.trim();
 
-  if (!email || !password) {
-    showText("loginError", "Please enter email and password.");
+  // require password and at least one of email or username
+  if (!password || (!email && !loginUserName)) {
+    showText("loginError", "Please enter username (or email) and password.");
     return;
   }
+
+  // if email is provided, validate its format
+  if (email && !isValidEmail(email)) {
+    showText("loginError", "Please enter a valid email address.");
+    return;
+  }
+
+  // Build payload. Sending both fields is ok — backend can decide which to use.
+  const payload = { password };
+  if (email) payload.email = email;
+  if (loginUserName) payload.userName = loginUserName;
 
   try {
     const res = await fetch(API_BASE_URL + LOGIN_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify(payload),
     });
 
     const data = await safeJson(res);
@@ -131,17 +139,14 @@ async function performLogin() {
       return;
     }
 
-    const token = data?.accessToken || data?.token || data?.jwt || data?.access_token;
-
+    const token = data.data?.accessToken || data.data?.token || data.data?.jwt || data.data?.access_token;
     if (!token) {
       showText("loginError", "Server did not return an access token.");
       return;
     }
 
     localStorage.setItem("token", token);
-
     redirect("index.html");
-
   } catch (err) {
     console.error("Login error:", err);
     showText("loginError", "Unable to reach server. Check backend and CORS.");
@@ -157,11 +162,11 @@ if (loginBtn) {
   });
 
   const pw = document.getElementById("password");
-  if (pw) pw.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") performLogin();
-  });
+  if (pw)
+    pw.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") performLogin();
+    });
 }
-
 
 // ====================================================================
 //           CHAT PAGE PROTECTION + BASIC UI (index.html)
