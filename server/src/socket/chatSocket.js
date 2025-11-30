@@ -1,56 +1,52 @@
 const jwt = require("jsonwebtoken");
-const apiError = require("../utils/apiError.js");
+require("dotenv").config();  // IMPORTANT
 
 function checkSocket(io) {
   io.on("connection", (socket) => {
-    console.log("socket connected: ", socket.id);
 
-    //Authenticate socket user
+    // 1️⃣ TOKEN VERIFICATION
     try {
       const token = socket.handshake.auth?.token;
 
       if (!token) {
-        console.log("No token");
-        return socket.disconnect();
+        console.log("❌ No token provided");
+        return socket.disconnect(true);
       }
 
-      const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-      socket.user = decodedToken;
+      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-      console.log("User authenticated..", decodedToken._id);
-    } catch (error) {
-      throw new apiError(400, "Invalid token", error.message);
-      return socket.disconnect();
+      socket.user = decoded;
+
+    } catch (err) {
+      console.log("❌ TOKEN VERIFY ERROR:", err.message);
+      return socket.disconnect(true); // STOP EVERYTHING HERE
     }
 
-    socket.join(socket.user._id);
+    // 2️⃣ JOIN PERSONAL ROOM — ONLY AFTER VERIFIED
+    socket.join(socket.user._id.toString());
 
+    // 3️⃣ JOIN CHAT ROOM
     socket.on("join_chat", (chatId) => {
       socket.join(chatId);
-      console.log(`User ${socket.user._id} joined chat ${chatId}`);
     });
 
+    // 4️⃣ TYPING EVENTS
     socket.on("typing", (chatId) => {
       socket.to(chatId).emit("typing", socket.user._id);
     });
+
     socket.on("stop_typing", (chatId) => {
       socket.to(chatId).emit("stop_typing", socket.user._id);
     });
 
-    socket.on("new_message", (message) => {
-      const chat = message.chat;
-
-      if (!chat || !chat.users) return;
-
-      chat.user.foEach((userId) => {
-        if (userId.toString() !== socket.user._id.toString()) {
-          socket.to(userId).emit("message received", message);
-        }
-      });
+    // 5️⃣ NEW MESSAGE
+    socket.on("new_message", async (message) => {
+      // your logic
     });
 
+    // 6️⃣ DISCONNECT
     socket.on("disconnect", () => {
-      console.log(`User disconnected ${socket.user._id}`);
+      
     });
   });
 }

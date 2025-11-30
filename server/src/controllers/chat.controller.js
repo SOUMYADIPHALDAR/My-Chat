@@ -6,47 +6,44 @@ const User = require("../models/user.model.js");
 const Message = require("../models/message.model.js");
 const { userInChat, isGroupAdmin } = require("../utils/chatPermission.js");
 
-const accessChat = asyncHandler(async(req, res) => {
-    const { chatName, isGroupChat } = req.body;
-    const { userId } = req.body;
+const accessChat = asyncHandler(async (req, res) => {
+  const { userId } = req.body;
 
-    if (typeof isGroupChat === "undefined") {
-        throw new apiError(400, "isGroupChat is required..")
-    }
-
-    if (isGroupChat && !chatName) {
-        throw new apiError(400, "chatName is required for group chats..");
-    }
-
-    if (!isGroupChat && !userId) {
-        throw new apiError(400, "User id is required to create one to one chat..");
-    }
-
-    let existingChat;
-    if (!isGroupChat) {
-        existingChat = await Chat.findOne({
-            isGroupChat: false,
-            users: { $all: [req.user._id, userId] }
-        }).populate("users", "-password");
-    }
-
-    if (existingChat) {
-        return res.status(200).json(
-            new apiError(200, existingChat, "Chat already exists..")
-        )
-    };
-
-    const newChat = await Chat.create({
-        chatName: isGroupChat ? chatName : "Private Chat",
-        isGroupChat,
-        users: isGroupChat ? [req.user._id] : [req.user._id, userId]
+  if (!userId) {
+    return res.status(400).json({
+      message: "userId is required"
     });
+  }
 
-    const finalChat = await Chat.findById(newChat._id).populate("users", "-password");
+  const myId = req.user._id;
 
-    return res.status(201).json(
-        new apiResponse(200,finalChat, "New chat created successfully..")
-    )
+  // 1️⃣ Check if private chat already exists
+  let existingChat = await Chat.findOne({
+    isGroupChat: false,
+    users: { $all: [myId, userId] }
+  }).populate("users", "-password");
+
+  if (existingChat) {
+    return res.status(200).json({
+      message: "Chat already exists",
+      chat: existingChat
+    });
+  }
+
+  // 2️⃣ Create new private chat
+  const newChat = await Chat.create({
+    chatName: "Private Chat",
+    isGroupChat: false,
+    users: [myId, userId]
+  });
+
+  const finalChat = await Chat.findById(newChat._id)
+    .populate("users", "-password");
+
+  return res.status(201).json({
+    message: "New chat created",
+    chat: finalChat
+  });
 });
 
 const fetchChats = asyncHandler(async(req, res) => {
