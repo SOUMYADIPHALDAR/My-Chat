@@ -124,6 +124,32 @@ const getAllUser = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, users, "Users fetched successfully.."));
 });
 
+const searchUsers = asyncHandler(async (req, res) => {
+  const query = req.query.query;
+
+  if (!query) {
+    throw new apiError(400, "No search query provided");
+  }
+
+  const regex = new RegExp(query, "i");
+
+  const users = await User.find({
+    $or: [{ userName: regex }, { fullName: regex }, { email: regex }],
+    _id: { $ne: req.user._id }, // do not include logged-in user
+  }).select("fullName userName avatar");
+
+  return res.status(200).json(
+    new apiResponse(
+      200,
+      {
+        data: users,
+        success: true,
+      },
+      "Users fetched successfully.."
+    )
+  );
+});
+
 const logOut = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
@@ -279,6 +305,7 @@ module.exports = {
   registerUser,
   logIn,
   getAllUser,
+  searchUsers,
   logOut,
   refreshAccessToken,
   updatePassword,
