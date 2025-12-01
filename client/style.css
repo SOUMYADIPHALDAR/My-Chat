@@ -150,3 +150,21 @@ body {
 .input-box button:hover {
     background: #1a65e0;
 }
+
+.my-profile {
+    margin-top: auto;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    background: #222;
+    border-radius: 8px;
+    color: white;
+}
+
+.my-profile img {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    margin-right: 10px;
+    border: 2px solid #555;
+}
