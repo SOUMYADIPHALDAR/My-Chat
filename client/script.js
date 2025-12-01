@@ -2,13 +2,10 @@
  * GLOBAL CONSTANTS
  *****************************************************/
 const API_BASE_URL = "http://localhost:5000";
-const REGISTER_ENDPOINT = "/user/register";
-const LOGIN_ENDPOINT = "/user/login";
-
 let token = localStorage.getItem("token") || null;
+let currentUserId = localStorage.getItem("userId") || null;
 let socket = null;
 let currentChatId = null;
-let currentUserId = localStorage.getItem("userId") || null;
 
 console.log("SCRIPT LOADED, TOKEN:", token);
 
@@ -19,9 +16,11 @@ function showText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
+
 function redirect(path) {
   window.location.href = path;
 }
+
 async function safeJson(res) {
   try {
     return await res.json();
@@ -43,14 +42,14 @@ if (registerBtn) {
 }
 
 async function performRegister() {
-  const name = document.getElementById("regName").value.trim();
-  const userName = document.getElementById("userName").value.trim();
-  const email = document.getElementById("regEmail").value.trim();
-  const password = document.getElementById("regPassword").value.trim();
-  const avatar = document.getElementById("regAvatar").files[0];
+  const name = regName.value.trim();
+  const userName = userNameInput.value.trim();
+  const email = regEmail.value.trim();
+  const password = regPassword.value.trim();
+  const avatar = regAvatar.files[0];
 
   if (!name || !userName || !email || !password || !avatar) {
-    showText("registerError", "All fields including avatar are required.");
+    showText("registerError", "All fields are required.");
     return;
   }
 
@@ -62,7 +61,7 @@ async function performRegister() {
   formData.append("avatar", avatar);
 
   try {
-    const res = await fetch(API_BASE_URL + REGISTER_ENDPOINT, {
+    const res = await fetch(API_BASE_URL + "/user/register", {
       method: "POST",
       body: formData,
     });
@@ -92,7 +91,7 @@ if (loginBtn) {
     performLogin();
   });
 
-  document.getElementById("password").addEventListener("keydown", (e) => {
+  password.addEventListener("keydown", (e) => {
     if (e.key === "Enter") performLogin();
   });
 }
@@ -105,32 +104,33 @@ async function performLogin() {
   const password = document.getElementById("password").value.trim();
 
   if (!password || (!email && !userName)) {
-    showText("loginError", "Enter username/email & password.");
+    showText("loginError", "Enter username/email & password");
     return;
   }
 
   try {
-    const res = await fetch(API_BASE_URL + LOGIN_ENDPOINT, {
+    const res = await fetch(API_BASE_URL + "/user/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, userName, password }),
     });
 
     const data = await safeJson(res);
-    console.log("LOGIN RESPONSE:", data);
+    console.log("LOGIN:", data);
 
     const newToken = data?.data?.accessToken;
-    currentUserId = data?.data?.user?._id;
+    const newUserId = data?.data?.user?._id;
 
-    if (!newToken || !currentUserId) {
+    if (!newToken || !newUserId) {
       showText("loginError", "Invalid login response.");
       return;
     }
 
     localStorage.setItem("token", newToken);
-    localStorage.setItem("userId", currentUserId);
+    localStorage.setItem("userId", newUserId);
 
     token = newToken;
+    currentUserId = newUserId;
 
     redirect("index.html");
   } catch (err) {
@@ -139,47 +139,81 @@ async function performLogin() {
 }
 
 /*****************************************************
- * SOCKET SETUP
+ * SOCKET INIT
  *****************************************************/
 function initSocket() {
   token = localStorage.getItem("token");
-  if (!token) return;
+  currentUserId = localStorage.getItem("userId");
 
-  socket = io(API_BASE_URL, {
-    auth: { token },
-    transports: ["websocket", "polling"],
-  });
+  if (!token) {
+    console.warn("❌ initSocket stopped: No token");
+    return;
+  }
+
+  try {
+    socket = io(API_BASE_URL, {
+      auth: { token },
+      transports: ["websocket", "polling"]
+    });
+  } catch (err) {
+    console.error("❌ io() failed:", err);
+    return;
+  }
 
   socket.on("connect", () => {
-    console.log("🔥 Socket connected:", socket.id);
+    console.log("🔥 Connected as:", currentUserId);
+    socket.emit("join_chat", currentUserId);
   });
 
   socket.on("message_received", (msg) => {
-    console.log("📩 Incoming:", msg);
+    console.log("📨 Received instantly:", msg);
     addIncomingMessage(msg);
   });
 }
 
+
 /*****************************************************
- * SEND MESSAGE BACKEND
+ * SEND MESSAGE
  *****************************************************/
-async function saveMessageToBackend(chatId, content) {
-  try {
-    await fetch(API_BASE_URL + "/message/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-      body: JSON.stringify({ chatId, content }),
-    });
-  } catch (err) {
-    console.error("❌ Failed to save message:", err);
-  }
+async function saveMessage(chatId, content) {
+  await fetch(API_BASE_URL + "/message/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token,
+    },
+    body: JSON.stringify({ chatId, content }),
+  });
+}
+
+function sendSocketMessage(chatId, content) {
+  socket?.emit("new_message", { chatId, content });
+}
+
+function addOutgoingMessage(text) {
+  const messages = document.getElementById("messages");
+  const div = document.createElement("div");
+  div.className = "message right";
+  div.textContent = text;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function addIncomingMessage(msg) {
+  const messages = document.getElementById("messages");
+  const div = document.createElement("div");
+
+  div.className =
+    msg.sender._id === currentUserId ? "message right" : "message left";
+
+  div.textContent = msg.content;
+
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
 }
 
 /*****************************************************
- * LOAD MESSAGE HISTORY
+ * LOAD CHAT HISTORY
  *****************************************************/
 async function loadChatHistory(chatId) {
   const res = await fetch(API_BASE_URL + `/message/get/${chatId}`, {
@@ -187,29 +221,22 @@ async function loadChatHistory(chatId) {
   });
 
   const data = await safeJson(res);
-  const messages = data?.data || [];
+  const history = data?.data || [];
 
   const msgBox = document.getElementById("messages");
   msgBox.innerHTML = "";
 
-  messages.forEach((m) => {
-    const div = document.createElement("div");
-    div.className =
-      m.sender._id === currentUserId ? "message right" : "message left";
-    div.textContent = m.content;
-    msgBox.appendChild(div);
-  });
-
-  msgBox.scrollTop = msgBox.scrollHeight;
+  history.forEach((m) => addIncomingMessage(m));
 }
 
 /*****************************************************
- * CHAT UI SETUP (ONLY ON index.html)
+ * CHAT PAGE UI
  *****************************************************/
 (function initChatUI() {
-  const path = window.location.pathname;
   const isChatPage =
-    path.endsWith("index.html") || path === "/" || path.endsWith("/");
+    location.pathname.endsWith("index.html") ||
+    location.pathname === "/" ||
+    location.pathname.endsWith("/");
 
   if (!isChatPage) return;
 
@@ -222,63 +249,63 @@ async function loadChatHistory(chatId) {
   }
 
   initSocket();
+  loadUsers();
 
+  /*****************************************************
+   * SEARCH INPUT
+   *****************************************************/
   const searchInput = document.getElementById("userSearch");
-  if (searchInput) {
-    searchInput.addEventListener("input", (e) => {
-      searchUsers(e.target.value.trim());
-    });
-  }
+  searchInput?.addEventListener("input", (e) =>
+    searchUsers(e.target.value.trim())
+  );
 
-  const sendBtn = document.getElementById("sendBtn");
+  /*****************************************************
+   * SEND MESSAGE
+   *****************************************************/
   const input = document.getElementById("msgInput");
+  const sendBtn = document.getElementById("sendBtn");
+
+  async function sendMessageFlow() {
+    const content = input.value.trim();
+    if (!content || !currentChatId) return;
+
+    addOutgoingMessage(content);
+    sendSocketMessage(currentChatId, content);
+    await saveMessage(currentChatId, content);
+
+    input.value = "";
+  }
 
   sendBtn.addEventListener("click", sendMessageFlow);
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") sendMessageFlow();
   });
 
-  loadUsers();
-
-  // safe emitter — MUST be defined before usage
-function sendSocketMessage(chatId, content) {
-  if (!chatId || !content) {
-    console.warn("sendSocketMessage called with missing args:", chatId, content);
-    return;
-  }
-
-  if (!socket || !socket.connected) {
-    console.warn("Socket not connected — cannot emit message");
-    return;
-  }
-
-  socket.emit("new_message", { chatId, content });
-}
-
-
   /*****************************************************
-   * SEND MESSAGE (UI + SOCKET + BACKEND)
+   * LOAD USERS
    *****************************************************/
-  async function sendMessageFlow() {
-    const content = input.value.trim();
-    if (!content || !currentChatId) return;
+  async function loadUsers() {
+    const res = await fetch(API_BASE_URL + "/user/all", {
+      headers: { Authorization: "Bearer " + token },
+    });
 
-    addOutgoingMessage(content);
+    const data = await safeJson(res);
+    const users = Array.isArray(data?.data?.data) ? data.data.data : [];
 
-    sendSocketMessage(currentChatId, content);
-
-    await saveMessageToBackend(currentChatId, content);
-
-    input.value = "";
+    renderUsers(users);
   }
 
-  function addOutgoingMessage(text) {
-    const messages = document.getElementById("messages");
-    const div = document.createElement("div");
-    div.className = "message right";
-    div.textContent = text;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
+  function renderUsers(users) {
+    const list = document.getElementById("usersList");
+    list.innerHTML = "";
+
+    users.forEach((u) => {
+      const div = document.createElement("div");
+      div.className = "chat-item";
+      div.textContent = u.userName;
+      div.addEventListener("click", () => openChat(u._id));  // FIXED
+      list.appendChild(div);
+    });
   }
 
   /*****************************************************
@@ -287,62 +314,20 @@ function sendSocketMessage(chatId, content) {
   async function searchUsers(query) {
     if (!query) return loadUsers();
 
-    const res = await fetch(`${API_BASE_URL}/user/search?query=${query}`, {
+    const res = await fetch(API_BASE_URL + `/user/search?query=${query}`, {
       headers: { Authorization: "Bearer " + token },
     });
 
     const data = await safeJson(res);
-
     const users = Array.isArray(data?.data?.data) ? data.data.data : [];
 
     renderUsers(users);
   }
 
   /*****************************************************
-   * LOAD ALL USERS
+   * OPEN CHAT (Correct function name!!)
    *****************************************************/
-  async function loadUsers() {
-    const res = await fetch(API_BASE_URL + "/user/all", {
-      headers: { Authorization: "Bearer " + token },
-    });
-
-    const data = await safeJson(res);
-
-    const users = Array.isArray(data?.data?.data) ? data.data.data : [];
-
-    renderUsers(users);
-  }
-
-  /*****************************************************
-   * RENDER USERS IN SIDEBAR
-   *****************************************************/
-  function renderUsers(users) {
-    const list = document.getElementById("usersList");
-    list.innerHTML = "";
-
-    users.forEach((user) => {
-      const div = document.createElement("div");
-      div.className = "chat-item";
-      div.textContent = user.userName;
-      div.addEventListener("click", () => openChatWithUser(user._id));
-      list.appendChild(div);
-    });
-  }
-
-  function joinChat(chatId) {
-    if (!socket || !socket.connected) {
-      console.warn("Socket not connected — cannot join chat");
-      return;
-    }
-
-    console.log("➡ Joining chat room:", chatId);
-    socket.emit("join_chat", chatId);
-  }
-
-  /*****************************************************
-   * OPEN CHAT WITH USER
-   *****************************************************/
-  async function openChatWithUser(otherUserId) {
+  async function openChat(otherUserId) {
     const res = await fetch(API_BASE_URL + "/chat/accesschat", {
       method: "POST",
       headers: {
@@ -355,17 +340,17 @@ function sendSocketMessage(chatId, content) {
     const data = await safeJson(res);
     const chat = data?.chat;
 
-    if (!chat || !chat._id) {
+    if (!chat?._id) {
       console.log("❌ Chat not returned:", data);
       return;
     }
 
     currentChatId = chat._id;
 
-    joinChat(currentChatId);
-
-    console.log("✔ Chat opened:", currentChatId);
+    console.log("Joining chat room:", currentChatId);
+    socket.emit("join_chat", currentChatId);   // REQUIRED
 
     loadChatHistory(currentChatId);
   }
+
 })();
