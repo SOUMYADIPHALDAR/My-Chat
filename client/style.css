@@ -168,3 +168,60 @@ body {
     margin-right: 10px;
     border: 2px solid #555;
 }
+
+/* CHAT HEADER */
+#chatHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: white;
+    border-bottom: 1px solid #ccc;
+    min-height: 60px;
+}
+
+#chatAvatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+#chatUserName {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* MESSAGE WRAPPER (FOR AVATAR + BUBBLE) */
+.message-wrapper {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+/* Avatar inside messages */
+.msg-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 8px;
+    border: 2px solid #ddd;
+}
+
+/* Message bubble adjust */
+.message.left {
+    background: #d1e7ff;
+    border-radius: 10px;
+    padding: 10px;
+    max-width: 65%;
+}
+
+.message.right {
+    background: #b2f2bb;
+    border-radius: 10px;
+    padding: 10px;
+    max-width: 65%;
+    margin-left: auto;
+}

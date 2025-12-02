@@ -1,9 +1,10 @@
 /*****************************************************
- * script.js — Clean, robust, functional
- * - prevents duplicate sockets/listeners
- * - prevents duplicate DB inserts (frontend no longer saves)
- * - renders history safely (no duplicate rendering)
- * - ignores socket messages coming from the local user
+ * script.js - Clean, robust, functional
+ * - Socket init only on chat page
+ * - Avatar normalization + display
+ * - Chat list, search, open chat, load history
+ * - Send messages via socket (backend should persist & emit)
+ * - Avoid duplicate listeners and duplicate UI prints
  *****************************************************/
 
 const API_BASE_URL = "http://localhost:5000";
@@ -14,7 +15,7 @@ let socket = null;
 let currentChatId = null;
 
 /* -------------------------
-   Small helpers
+   Helpers
    ------------------------- */
 function showText(id, text) {
   const el = document.getElementById(id);
@@ -32,7 +33,9 @@ async function safeJson(res) {
 }
 
 /* ======================================================
-   Registration & Login (basic wiring; checks DOM exist)
+   Registration & Login
+   (HTML: register.html must have regName,userName,regEmail,regPassword,regAvatar,registerBtn)
+   (HTML: login.html must have email,loginUserName,password,loginBtn)
    ====================================================== */
 async function performRegister() {
   const nameEl = document.getElementById("regName");
@@ -83,11 +86,11 @@ document.getElementById("registerBtn")?.addEventListener("click", (e) => {
 
 async function performLogin() {
   const email = document.getElementById("email")?.value?.trim() || "";
-  const userName =
+  const loginUserName =
     document.getElementById("loginUserName")?.value?.trim() || "";
   const password = document.getElementById("password")?.value?.trim() || "";
 
-  if (!password || (!email && !userName)) {
+  if (!password || (!email && !loginUserName)) {
     showText("loginError", "Enter username/email & password.");
     return;
   }
@@ -96,30 +99,50 @@ async function performLogin() {
     const res = await fetch(`${API_BASE_URL}/user/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, userName, password }),
+      body: JSON.stringify({ email, userName: loginUserName, password }),
     });
     const data = await safeJson(res);
 
     const newToken = data?.data?.accessToken || "";
-    const newUserId = data?.data?.user?._id || "";
-    const avatar = data?.data?.user?.avatar || "";
-    const userName = data?.data?.user?.userName || ""
+    const userObj = data?.data?.user || {};
+    const newUserId = userObj._id || "";
+
+    // Normalize avatar into a flat string URL (handle string or object shape)
+    let avatarUrl = "";
+    if (
+      typeof userObj.avatar === "string" &&
+      userObj.avatar.startsWith("http")
+    ) {
+      avatarUrl = userObj.avatar;
+    } else if (
+      userObj.avatar &&
+      typeof userObj.avatar === "object" &&
+      (userObj.avatar.url || userObj.avatar.secure_url)
+    ) {
+      avatarUrl = userObj.avatar.url || userObj.avatar.secure_url || "";
+    } else {
+      avatarUrl = "";
+    }
+
+    const resolvedUserName = userObj.userName || userObj.fullName || "";
 
     if (!newToken || !newUserId) {
       showText("loginError", data?.message || "Invalid login response.");
       return;
     }
 
+    // persist user info
     localStorage.setItem("token", newToken);
     localStorage.setItem("userId", newUserId);
-    localStorage.setItem("avatar", avatar);
-    localStorage.setItem("userName", userName);
+    localStorage.setItem("avatar", avatarUrl); // always flat string
+    localStorage.setItem("userName", resolvedUserName);
 
-    // update runtime values then redirect
     token = newToken;
     currentUserId = newUserId;
+
     redirect("index.html");
   } catch (err) {
+    console.error("performLogin error:", err);
     showText("loginError", "Login failed.");
   }
 }
@@ -129,56 +152,79 @@ document.getElementById("loginBtn")?.addEventListener("click", (e) => {
 });
 
 /* ======================================================
-   Socket initialization — MUST be created exactly once
+   Socket init (only on chat page; attach listeners once)
    ====================================================== */
 function initSocket() {
-  // If already initialized, skip
-  if (socket) return;
+  // check chat page
+  const isChatPage =
+    location.pathname.endsWith("index.html") ||
+    location.pathname === "/" ||
+    location.pathname.endsWith("/");
+
+  if (!isChatPage) return;
+
+  if (socket) return; // already initialized
 
   token = localStorage.getItem("token");
   currentUserId = localStorage.getItem("userId");
 
   if (!token || !currentUserId) {
-    console.warn("initSocket: missing token or userId");
+    console.warn("initSocket: no token/userId - skipping");
     return;
   }
 
-  // create socket
+  // require socket.io client is included in HTML:
+  // <script src="http://localhost:5000/socket.io/socket.io.js"></script> before this script
+  if (typeof io === "undefined") {
+    console.error(
+      "Socket.IO client not found. Include <script src='http://localhost:5000/socket.io/socket.io.js'></script> before script.js"
+    );
+    return;
+  }
+
   socket = io(API_BASE_URL, {
     auth: { token },
     transports: ["websocket", "polling"],
   });
 
-  // Only attach listeners once. Use off() before on() to be safe.
   socket.on("connect", () => {
     console.log("🔥 Socket connected:", socket.id);
-    // join personal room so server may emit personal messages (if server uses personal rooms)
+    // join personal room so backend can emit to personal id rooms
     socket.emit("join_chat", currentUserId);
   });
 
-  // make sure no duplicate listener stacking
+  // safe attach: remove previous listener then add
   socket.off("message_received");
   socket.on("message_received", (msg) => {
-    // defensive checks
-    if (!msg) return;
-    // ignore messages that come from this client (safety)
-    if (msg.sender?._id && msg.sender._id === currentUserId) return;
-    addIncomingMessage(msg);
-  });
+  const incomingChatId = msg.chat?._id || msg.chat;
 
-  // optional debugging hooks
+  // 🔥 If message belongs to the currently open chat → show it
+  if (incomingChatId === currentChatId) {
+    addIncomingMessage(msg);
+    return;
+  }
+
+  // ❗ If message NOT for this chat → DO NOT show it
+  console.log("Message for another chat → not showing in this window");
+});
+
+
   socket.on("disconnect", (reason) => {
     console.log("Socket disconnected:", reason);
   });
+
   socket.on("connect_error", (err) => {
     console.warn("Socket connect_error:", err?.message || err);
+    // if auth error, you may want to force logout
+    // if (err && /auth|token|invalid/i.test(err.message)) { localStorage.removeItem("token"); redirect("login.html"); }
   });
+
+  // debug helper to view any incoming events (optional)
+  // socket.onAny((event, data) => console.log("EVENT", event, data));
 }
 
 /* ======================================================
-   Message UI helpers (history renderer vs live renderer)
-   - historyRenderer performs pure rendering (no duplication logic)
-   - incoming renderer used when receiving live socket messages
+   Message UI helpers
    ====================================================== */
 function addOutgoingMessage(text) {
   const messages = document.getElementById("messages");
@@ -193,31 +239,82 @@ function addOutgoingMessage(text) {
 function addIncomingMessage(msg) {
   const messages = document.getElementById("messages");
   if (!messages) return;
-  const div = document.createElement("div");
-  const isMine = msg.sender?._id === currentUserId;
-  div.className = isMine ? "message right" : "message left";
-  div.textContent = msg.content;
-  messages.appendChild(div);
+
+  // wrapper to include avatar + bubble
+  const wrapper = document.createElement("div");
+  wrapper.className = "message-wrapper";
+
+  console.log("addIncomingMessage msg:", msg);
+
+  const isMine =
+    msg.sender?._id && String(msg.sender._id) === String(currentUserId);
+
+  // compute avatar URL robustly:
+  const avatarUrl =
+    (msg.sender &&
+      typeof msg.sender.avatar === "string" &&
+      msg.sender.avatar.startsWith("http") &&
+      msg.sender.avatar) ||
+    (msg.sender &&
+      msg.sender.avatar &&
+      (msg.sender.avatar.url || msg.sender.avatar.secure_url)) ||
+    "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+  if (!isMine) {
+    const avatar = document.createElement("img");
+    avatar.className = "msg-avatar";
+    avatar.src = avatarUrl;
+    avatar.alt = msg.sender?.userName || "avatar";
+    wrapper.appendChild(avatar);
+  }
+
+  const bubble = document.createElement("div");
+  bubble.className = isMine ? "message right" : "message left";
+  bubble.textContent = msg.content || "";
+
+  wrapper.appendChild(bubble);
+  messages.appendChild(wrapper);
   messages.scrollTop = messages.scrollHeight;
 }
 
-/* History renderer — does not call addIncomingMessage to avoid duplication risk */
-function renderHistoryList(history) {
+/* Render history (clears first - avoids duplication) */
+function renderHistoryList(history = []) {
   const msgBox = document.getElementById("messages");
   if (!msgBox) return;
   msgBox.innerHTML = "";
   history.forEach((m) => {
     const div = document.createElement("div");
-    const isMine = m.sender?._id === currentUserId;
+    const isMine =
+      m.sender?._id && String(m.sender._id) === String(currentUserId);
     div.className = isMine ? "message right" : "message left";
-    div.textContent = m.content;
-    msgBox.appendChild(div);
+    div.textContent = m.content || "";
+    // optional: include small avatar on left for other users when rendering history
+    if (!isMine && m.sender) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "message-wrapper";
+      const avatar = document.createElement("img");
+      avatar.className = "msg-avatar";
+      const avatarUrl =
+        (typeof m.sender.avatar === "string" &&
+          m.sender.avatar.startsWith("http") &&
+          m.sender.avatar) ||
+        (m.sender.avatar &&
+          (m.sender.avatar.url || m.sender.avatar.secure_url)) ||
+        "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+      avatar.src = avatarUrl;
+      wrapper.appendChild(avatar);
+      wrapper.appendChild(div);
+      msgBox.appendChild(wrapper);
+    } else {
+      msgBox.appendChild(div);
+    }
   });
   msgBox.scrollTop = msgBox.scrollHeight;
 }
 
 /* ======================================================
-   Load chat history (server endpoint expected: /message/get/:chatId)
+   Load chat history from server
+   endpoint: GET /message/get/:chatId
    ====================================================== */
 async function loadChatHistory(chatId) {
   if (!chatId) return;
@@ -236,7 +333,6 @@ async function loadChatHistory(chatId) {
 
 /* ======================================================
    Chat list & search
-   - fetchChats loads persisted chats (sidebar)
    ====================================================== */
 async function fetchChats() {
   token = localStorage.getItem("token");
@@ -253,13 +349,15 @@ async function fetchChats() {
   }
 }
 
-function renderChatList(chats) {
+function renderChatList(chats = []) {
   const list = document.getElementById("usersList");
   if (!list) return;
   list.innerHTML = "";
   chats.forEach((chat) => {
-    // find the other user (for private chat)
-    const otherUser = (chat.users || []).find((u) => u._id !== currentUserId);
+    // find the other user for private chat
+    const otherUser = (chat.users || []).find(
+      (u) => String(u._id) !== String(currentUserId)
+    );
     const label =
       otherUser?.userName || otherUser?.fullName || chat.chatName || "Unknown";
     const div = document.createElement("div");
@@ -267,18 +365,26 @@ function renderChatList(chats) {
     div.textContent = label;
     div.dataset.chatId = chat._id;
     div.addEventListener("click", () => {
-      // if this is a group chat you might open group UI — here we open chat with users
-      openChat(otherUser?._id);
+      // open this chat room directly
+      if (chat._id) {
+        currentChatId = chat._id;
+        initSocket(); // ensure socket present
+        socket?.emit("join_chat", currentChatId);
+        // update chat header + avatar
+        updateChatHeaderWithUser(otherUser);
+        loadChatHistory(currentChatId);
+      } else {
+        openChat(otherUser?._id);
+      }
     });
     list.appendChild(div);
   });
 }
 
-/* Search users */
+/* Search users and display results (shows users, not chats) */
 async function searchUsers(query) {
   token = localStorage.getItem("token");
   if (!query) {
-    // fallback -> show chats
     fetchChats();
     return;
   }
@@ -290,11 +396,12 @@ async function searchUsers(query) {
       }
     );
     const data = await safeJson(res);
-    // some of your endpoints returned nested data; normalize
     const users = Array.isArray(data?.data?.data)
       ? data.data.data
       : Array.isArray(data?.data)
       ? data.data
+      : Array.isArray(data)
+      ? data
       : [];
     renderUserSearchResults(users);
   } catch (err) {
@@ -302,7 +409,7 @@ async function searchUsers(query) {
     renderUserSearchResults([]);
   }
 }
-function renderUserSearchResults(users) {
+function renderUserSearchResults(users = []) {
   const list = document.getElementById("usersList");
   if (!list) return;
   list.innerHTML = "";
@@ -316,47 +423,48 @@ function renderUserSearchResults(users) {
 }
 
 /* ======================================================
-   Open chat with a user — use /chat/accesschat (server creates or returns chat)
-   Then join chat room and load history.
+   Open or create chat with user (POST /chat/accesschat)
+   join the room, update header and load history
    ====================================================== */
 async function openChat(otherUserId) {
   if (!otherUserId) return;
-  token = localStorage.getItem("token");
 
-  try {
-    const res = await fetch(`${API_BASE_URL}/chat/accesschat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-      body: JSON.stringify({ userId: otherUserId }),
-    });
-    const data = await safeJson(res);
-    // server returns { chat: {...} } or { data: chat } depending on implementation — normalize
-    const chat = data?.chat ?? data?.data ?? data;
-    const chatId = chat?._id || (typeof chat === "string" ? chat : null);
-    if (!chatId) {
-      console.error("openChat: no chatId returned", data);
-      return;
-    }
-    currentChatId = chatId;
+  const res = await fetch(`${API_BASE_URL}/chat/accesschat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token,
+    },
+    body: JSON.stringify({ userId: otherUserId }),
+  });
 
-    // ensure socket exists
-    initSocket();
+  const data = await safeJson(res);
+  const chat = data?.chat ?? data?.data;
 
-    // join the chat room
-    socket?.emit("join_chat", currentChatId);
+  if (!chat?._id) return;
 
-    // load history (this will render messages without using addIncomingMessage)
-    loadChatHistory(currentChatId);
-  } catch (err) {
-    console.error("openChat error:", err);
+  currentChatId = chat._id;
+
+  // 🔥 FIRST GET OTHER USER
+  const otherUser = chat.users.find(
+    (u) => String(u._id) !== String(currentUserId)
+  );
+
+  // 🔥 THEN UPDATE HEADER
+  if (otherUser) {
+    updateChatHeaderWithUser(otherUser);
   }
+
+  // join room + load messages
+  initSocket();
+  socket.emit("join_chat", currentChatId);
+  loadChatHistory(currentChatId);
 }
 
+
+
 /* ======================================================
-   Send message (use socket only — backend socket handler must save the message)
+   Send message (emit socket only; backend should persist & emit)
    ====================================================== */
 function sendMessageFlow() {
   const input = document.getElementById("msgInput");
@@ -367,33 +475,83 @@ function sendMessageFlow() {
   // local echo
   addOutgoingMessage(content);
 
-  // emit via socket only — backend socket should persist to DB and emit to recipients
+  // emit via socket — backend must save message and emit to recipients
   socket?.emit("new_message", { chatId: currentChatId, content });
 
-  // clear input
   input.value = "";
 }
 
+/* ======================================================
+   Chat header & profile helpers
+   (HTML must include inside .chat-window:)
+   <div class="chat-header"><img id="chatAvatar"/><span id="chatName"></span></div>
+   And in sidebar bottom:
+   <div id="myProfile"><img id="myAvatar"/><span id="myName"></span></div>
+   ====================================================== */
+function updateChatHeaderWithUser(otherUser) {
+  console.log("Updating chat header with:", otherUser);
+
+  const headerName = document.getElementById("chatUserName");
+  const headerAvatar = document.getElementById("chatAvatar");
+
+  if (!headerName || !headerAvatar) {
+    console.warn("❌ Chat header elements not found");
+    return;
+  }
+
+  // Name
+  headerName.textContent =
+    otherUser.userName || otherUser.fullName || "Unknown User";
+
+  // Avatar — support ALL possible formats
+  let avatarUrl = "";
+
+  if (typeof otherUser.avatar === "string") {
+    avatarUrl = otherUser.avatar;
+  } else if (otherUser.avatar?.url) {
+    avatarUrl = otherUser.avatar.url;
+  }
+
+  if (!avatarUrl || avatarUrl === "null" || avatarUrl === "undefined") {
+    avatarUrl = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+  }
+
+  headerAvatar.src = avatarUrl;
+}
+
+
+
 function loadMyProfile() {
-  const avatar = localStorage.getItem("avatar");
-  const username = localStorage.getItem("userName");
+  const avatarStored = localStorage.getItem("avatar") || "";
+  const username = localStorage.getItem("userName") || "";
 
   const avatarImg = document.getElementById("myAvatar");
   const nameSpan = document.getElementById("myName");
 
-  if (avatarImg) {
-    avatarImg.src = avatar && avatar.length > 5 
-      ? avatar 
-      : "https://cdn-icons-png.flaticon.com/512/149/149071.png"; // default avatar
+  let avatarUrl = "";
+  if (avatarStored.startsWith && avatarStored.startsWith("http")) {
+    avatarUrl = avatarStored;
+  } else {
+    // safe parse in case someone stored a JSON string
+    try {
+      const parsed = JSON.parse(avatarStored);
+      avatarUrl = parsed?.url || parsed?.secure_url || "";
+    } catch {
+      avatarUrl = avatarStored || "";
+    }
   }
 
-  if (nameSpan) {
-    nameSpan.textContent = username || "New User";
+  if (avatarImg) {
+    avatarImg.src =
+      avatarUrl && avatarUrl.length > 5
+        ? avatarUrl
+        : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   }
+  if (nameSpan) nameSpan.textContent = username || "You";
 }
 
 /* ======================================================
-   Init chat page UI — attach event listeners once on load
+   Init chat page UI - attach event listeners once
    ====================================================== */
 function initChatUI() {
   const isChatPage =
@@ -423,32 +581,28 @@ function initChatUI() {
   });
 
   // send message wiring
-  const sendBtn = document.getElementById("sendBtn");
-  const input = document.getElementById("msgInput");
-  sendBtn?.addEventListener("click", sendMessageFlow);
-  input?.addEventListener("keydown", (e) => {
+  document
+    .getElementById("sendBtn")
+    ?.addEventListener("click", sendMessageFlow);
+  document.getElementById("msgInput")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") sendMessageFlow();
   });
 
-  // optional: logout button
-  const logoutBtn = document.getElementById("logoutBtn");
-  logoutBtn?.addEventListener("click", () => {
+  // logout
+  document.getElementById("logoutBtn")?.addEventListener("click", () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
+    localStorage.removeItem("avatar");
+    localStorage.removeItem("userName");
     socket?.disconnect?.();
     socket = null;
     redirect("login.html");
   });
 }
 
-/* Start everything after DOM is loaded */
+/* ======================================================
+   Start after DOM loaded
+   ====================================================== */
 window.addEventListener("load", () => {
-  // guard: ensure socket.io client lib is available
-  if (typeof io === "undefined") {
-    console.error(
-      'Socket.IO client not loaded — include <script src="/socket.io/socket.io.js"></script> before script.js'
-    );
-  }
-  initSocket(); // safe: will no-op if already connected or missing token
   initChatUI();
 });
