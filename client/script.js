@@ -196,18 +196,17 @@ function initSocket() {
   // safe attach: remove previous listener then add
   socket.off("message_received");
   socket.on("message_received", (msg) => {
-  const incomingChatId = msg.chat?._id || msg.chat;
+    const incomingChatId = msg.chat?._id || msg.chat;
 
-  // 🔥 If message belongs to the currently open chat → show it
-  if (incomingChatId === currentChatId) {
-    addIncomingMessage(msg);
-    return;
-  }
+    // 🔥 If message belongs to the currently open chat → show it
+    if (incomingChatId === currentChatId) {
+      addIncomingMessage(msg);
+      return;
+    }
 
-  // ❗ If message NOT for this chat → DO NOT show it
-  console.log("Message for another chat → not showing in this window");
-});
-
+    // ❗ If message NOT for this chat → DO NOT show it
+    console.log("Message for another chat → not showing in this window");
+  });
 
   socket.on("disconnect", (reason) => {
     console.log("Socket disconnected:", reason);
@@ -461,8 +460,6 @@ async function openChat(otherUserId) {
   loadChatHistory(currentChatId);
 }
 
-
-
 /* ======================================================
    Send message (emit socket only; backend should persist & emit)
    ====================================================== */
@@ -518,8 +515,6 @@ function updateChatHeaderWithUser(otherUser) {
 
   headerAvatar.src = avatarUrl;
 }
-
-
 
 function loadMyProfile() {
   const avatarStored = localStorage.getItem("avatar") || "";

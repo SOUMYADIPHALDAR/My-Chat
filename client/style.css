@@ -225,3 +225,28 @@ body {
     max-width: 65%;
     margin-left: auto;
 }
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.logout-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 12px;
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.logout-btn:hover {
+  background: #e60000;
+}
+
+/* Ensure profile + logout stays at bottom */
+.my-profile {
+  margin-top: auto;
+}
