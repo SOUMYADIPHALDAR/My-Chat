@@ -13,7 +13,10 @@
     <div class="container">
       <!-- Sidebar -->
       <div class="sidebar">
-        <h2>Chats</h2>
+        <div class="sidebar-header">
+          <h2>Chats</h2>
+          <button id="createGroupBtn" class="create-group-btn" title="Create Group">+ Group</button>
+        </div>
         <input id="userSearch" type="text" placeholder="Search users..." />
         <div id="usersList"></div>
 
@@ -32,7 +35,13 @@
             id="chatAvatar"
             src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
           />
-          <span id="chatUserName">Select a chat</span>
+          <div class="chat-header-info">
+            <span id="chatUserName">Select a chat</span>
+            <span id="chatUserCount" class="chat-count"></span>
+          </div>
+          <div id="groupActions" class="group-actions" style="display: none;">
+            <button id="manageGroupBtn" class="manage-btn" title="Manage Group">⚙️</button>
+          </div>
         </div>
 
         <!-- MESSAGES -->
@@ -48,6 +57,34 @@
       <!-- END chat-window -->
     </div>
     <!-- END container -->
+
+    <!-- Create Group Modal -->
+    <div id="createGroupModal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Create Group Chat</h2>
+        <input type="text" id="groupNameInput" placeholder="Group Name" />
+        <div class="user-selection">
+          <h3>Select Members (at least 2)</h3>
+          <input type="text" id="groupUserSearch" placeholder="Search users to add..." />
+          <div id="availableUsers" class="available-users"></div>
+          <div id="selectedUsers" class="selected-users">
+            <h4>Selected Members:</h4>
+            <div id="selectedUsersList"></div>
+          </div>
+        </div>
+        <button id="createGroupSubmitBtn" class="submit-btn">Create Group</button>
+      </div>
+    </div>
+
+    <!-- Manage Group Modal -->
+    <div id="manageGroupModal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2 id="manageGroupTitle">Manage Group</h2>
+        <div id="manageGroupContent"></div>
+      </div>
+    </div>
 
     <!-- IMPORTANT: JS -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>

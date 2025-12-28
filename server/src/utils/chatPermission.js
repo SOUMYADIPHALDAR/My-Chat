@@ -28,7 +28,7 @@ const isGroupAdmin = async(chatId, userId) => {
         throw new apiError(403, "This action requires a group chat..");
     }
 
-    if (chat.groupAdmin.toString() === userId.toString()) {
+    if (chat.groupAdmin.toString() !== userId.toString()) {
         throw new apiError(403, "Only group admin can perform this action..")
     };
 

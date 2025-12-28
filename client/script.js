@@ -13,6 +13,8 @@ let token = localStorage.getItem("token") || null;
 let currentUserId = localStorage.getItem("userId") || null;
 let socket = null;
 let currentChatId = null;
+let currentChat = null; // Store current chat object (for group info)
+let selectedUsersForGroup = []; // For group creation
 
 /* -------------------------
    Helpers
@@ -247,6 +249,7 @@ function addIncomingMessage(msg) {
 
   const isMine =
     msg.sender?._id && String(msg.sender._id) === String(currentUserId);
+  const isGroupChat = currentChat?.isGroupChat;
 
   // compute avatar URL robustly:
   const avatarUrl =
@@ -267,11 +270,29 @@ function addIncomingMessage(msg) {
     wrapper.appendChild(avatar);
   }
 
+  const bubbleContainer = document.createElement("div");
+  bubbleContainer.style.display = "flex";
+  bubbleContainer.style.flexDirection = "column";
+  bubbleContainer.style.maxWidth = isMine ? "65%" : "65%";
+  bubbleContainer.style.marginLeft = isMine ? "auto" : "0";
+
+  // Show sender name in group chats
+  if (isGroupChat && !isMine && msg.sender) {
+    const senderName = document.createElement("span");
+    senderName.style.fontSize = "12px";
+    senderName.style.color = "#666";
+    senderName.style.marginBottom = "4px";
+    senderName.style.paddingLeft = "4px";
+    senderName.textContent = msg.sender.userName || msg.sender.fullName || "Unknown";
+    bubbleContainer.appendChild(senderName);
+  }
+
   const bubble = document.createElement("div");
   bubble.className = isMine ? "message right" : "message left";
   bubble.textContent = msg.content || "";
 
-  wrapper.appendChild(bubble);
+  bubbleContainer.appendChild(bubble);
+  wrapper.appendChild(bubbleContainer);
   messages.appendChild(wrapper);
   messages.scrollTop = messages.scrollHeight;
 }
@@ -281,16 +302,17 @@ function renderHistoryList(history = []) {
   const msgBox = document.getElementById("messages");
   if (!msgBox) return;
   msgBox.innerHTML = "";
+  const isGroupChat = currentChat?.isGroupChat;
+  
   history.forEach((m) => {
-    const div = document.createElement("div");
+    const wrapper = document.createElement("div");
+    wrapper.className = "message-wrapper";
+    
     const isMine =
       m.sender?._id && String(m.sender._id) === String(currentUserId);
-    div.className = isMine ? "message right" : "message left";
-    div.textContent = m.content || "";
-    // optional: include small avatar on left for other users when rendering history
+    
+    // Avatar for other users
     if (!isMine && m.sender) {
-      const wrapper = document.createElement("div");
-      wrapper.className = "message-wrapper";
       const avatar = document.createElement("img");
       avatar.className = "msg-avatar";
       const avatarUrl =
@@ -302,11 +324,32 @@ function renderHistoryList(history = []) {
         "https://cdn-icons-png.flaticon.com/512/149/149071.png";
       avatar.src = avatarUrl;
       wrapper.appendChild(avatar);
-      wrapper.appendChild(div);
-      msgBox.appendChild(wrapper);
-    } else {
-      msgBox.appendChild(div);
     }
+    
+    const bubbleContainer = document.createElement("div");
+    bubbleContainer.style.display = "flex";
+    bubbleContainer.style.flexDirection = "column";
+    bubbleContainer.style.maxWidth = isMine ? "65%" : "65%";
+    bubbleContainer.style.marginLeft = isMine ? "auto" : "0";
+    
+    // Show sender name in group chats
+    if (isGroupChat && !isMine && m.sender) {
+      const senderName = document.createElement("span");
+      senderName.style.fontSize = "12px";
+      senderName.style.color = "#666";
+      senderName.style.marginBottom = "4px";
+      senderName.style.paddingLeft = "4px";
+      senderName.textContent = m.sender.userName || m.sender.fullName || "Unknown";
+      bubbleContainer.appendChild(senderName);
+    }
+    
+    const div = document.createElement("div");
+    div.className = isMine ? "message right" : "message left";
+    div.textContent = m.content || "";
+    
+    bubbleContainer.appendChild(div);
+    wrapper.appendChild(bubbleContainer);
+    msgBox.appendChild(wrapper);
   });
   msgBox.scrollTop = msgBox.scrollHeight;
 }
@@ -353,27 +396,43 @@ function renderChatList(chats = []) {
   if (!list) return;
   list.innerHTML = "";
   chats.forEach((chat) => {
-    // find the other user for private chat
-    const otherUser = (chat.users || []).find(
-      (u) => String(u._id) !== String(currentUserId)
-    );
-    const label =
-      otherUser?.userName || otherUser?.fullName || chat.chatName || "Unknown";
     const div = document.createElement("div");
-    div.className = "chat-item";
-    div.textContent = label;
-    div.dataset.chatId = chat._id;
+    
+    if (chat.isGroupChat) {
+      // Group chat
+      div.className = "chat-item group-chat";
+      div.textContent = chat.chatName || "Group Chat";
+      div.dataset.chatId = chat._id;
+      div.dataset.isGroup = "true";
+    } else {
+      // Private chat
+      const otherUser = (chat.users || []).find(
+        (u) => String(u._id) !== String(currentUserId)
+      );
+      const label =
+        otherUser?.userName || otherUser?.fullName || chat.chatName || "Unknown";
+      div.className = "chat-item";
+      div.textContent = label;
+      div.dataset.chatId = chat._id;
+      div.dataset.isGroup = "false";
+    }
+    
     div.addEventListener("click", () => {
-      // open this chat room directly
       if (chat._id) {
         currentChatId = chat._id;
-        initSocket(); // ensure socket present
+        currentChat = chat; // Store chat object
+        initSocket();
         socket?.emit("join_chat", currentChatId);
-        // update chat header + avatar
-        updateChatHeaderWithUser(otherUser);
+        
+        if (chat.isGroupChat) {
+          updateChatHeaderForGroup(chat);
+        } else {
+          const otherUser = (chat.users || []).find(
+            (u) => String(u._id) !== String(currentUserId)
+          );
+          updateChatHeaderWithUser(otherUser);
+        }
         loadChatHistory(currentChatId);
-      } else {
-        openChat(otherUser?._id);
       }
     });
     list.appendChild(div);
@@ -443,6 +502,7 @@ async function openChat(otherUserId) {
   if (!chat?._id) return;
 
   currentChatId = chat._id;
+  currentChat = chat;
 
   // 🔥 FIRST GET OTHER USER
   const otherUser = chat.users.find(
@@ -490,6 +550,8 @@ function updateChatHeaderWithUser(otherUser) {
 
   const headerName = document.getElementById("chatUserName");
   const headerAvatar = document.getElementById("chatAvatar");
+  const headerCount = document.getElementById("chatUserCount");
+  const groupActions = document.getElementById("groupActions");
 
   if (!headerName || !headerAvatar) {
     console.warn("❌ Chat header elements not found");
@@ -514,6 +576,34 @@ function updateChatHeaderWithUser(otherUser) {
   }
 
   headerAvatar.src = avatarUrl;
+  
+  // Hide group actions for private chat
+  if (headerCount) headerCount.textContent = "";
+  if (groupActions) groupActions.style.display = "none";
+}
+
+function updateChatHeaderForGroup(chat) {
+  const headerName = document.getElementById("chatUserName");
+  const headerAvatar = document.getElementById("chatAvatar");
+  const headerCount = document.getElementById("chatUserCount");
+  const groupActions = document.getElementById("groupActions");
+
+  if (!headerName || !headerAvatar) return;
+
+  headerName.textContent = chat.chatName || "Group Chat";
+  headerAvatar.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; // Default group icon
+  
+  if (headerCount) {
+    const memberCount = chat.users?.length || 0;
+    headerCount.textContent = `${memberCount} members`;
+  }
+  
+  // Show group actions if user is admin
+  if (groupActions) {
+    const isAdmin = chat.groupAdmin?._id?.toString() === currentUserId || 
+                   chat.groupAdmin?.toString() === currentUserId;
+    groupActions.style.display = isAdmin ? "flex" : "none";
+  }
 }
 
 function loadMyProfile() {
@@ -543,6 +633,471 @@ function loadMyProfile() {
         : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   }
   if (nameSpan) nameSpan.textContent = username || "You";
+}
+
+/* ======================================================
+   Group Chat Functions
+   ====================================================== */
+
+/* Open Create Group Modal */
+async function openCreateGroupModal() {
+  selectedUsersForGroup = [];
+  document.getElementById("groupNameInput").value = "";
+  document.getElementById("selectedUsersList").innerHTML = "";
+  document.getElementById("availableUsers").innerHTML = "";
+  document.getElementById("createGroupModal").style.display = "block";
+  
+  // Load available users
+  await loadAvailableUsersForGroup();
+}
+
+/* Load users for group creation */
+async function loadAvailableUsersForGroup() {
+  token = localStorage.getItem("token");
+  try {
+    const res = await fetch(`${API_BASE_URL}/user/search?query=`, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    const data = await safeJson(res);
+    const users = Array.isArray(data?.data?.data)
+      ? data.data.data
+      : Array.isArray(data?.data)
+      ? data.data
+      : [];
+    
+    renderAvailableUsers(users);
+  } catch (err) {
+    console.error("loadAvailableUsersForGroup error:", err);
+  }
+}
+
+/* Render available users in modal */
+function renderAvailableUsers(users = []) {
+  const container = document.getElementById("availableUsers");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  users.forEach((user) => {
+    if (String(user._id) === String(currentUserId)) return; // Skip self
+    
+    const isSelected = selectedUsersForGroup.some(
+      (u) => String(u._id) === String(user._id)
+    );
+    
+    const div = document.createElement("div");
+    div.className = `user-option ${isSelected ? "selected" : ""}`;
+    const userJson = JSON.stringify(user).replace(/"/g, '&quot;');
+    div.innerHTML = `
+      <input type="checkbox" ${isSelected ? "checked" : ""} 
+             onchange="toggleUserSelection('${user._id}', '${user.userName || user.fullName}', '${userJson}')" />
+      <span>${user.userName || user.fullName || user.email}</span>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/* Toggle user selection for group */
+window.toggleUserSelection = function(userId, userName, userObjStr) {
+  try {
+    const userObj = JSON.parse(userObjStr.replace(/&quot;/g, '"'));
+    const index = selectedUsersForGroup.findIndex(
+      (u) => String(u._id) === String(userId)
+    );
+    
+    if (index > -1) {
+      selectedUsersForGroup.splice(index, 1);
+    } else {
+      selectedUsersForGroup.push(userObj);
+    }
+    
+    updateSelectedUsersList();
+    loadAvailableUsersForGroup(); // Refresh to update checkboxes
+  } catch (err) {
+    console.error("Error parsing user object:", err);
+  }
+}
+
+/* Update selected users list */
+function updateSelectedUsersList() {
+  const container = document.getElementById("selectedUsersList");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  selectedUsersForGroup.forEach((user) => {
+    const tag = document.createElement("div");
+    tag.className = "selected-user-tag";
+    tag.innerHTML = `
+      <span>${user.userName || user.fullName}</span>
+      <span class="remove-user" onclick="removeUserFromSelection('${user._id}')">×</span>
+    `;
+    container.appendChild(tag);
+  });
+}
+
+/* Remove user from selection */
+window.removeUserFromSelection = function(userId) {
+  selectedUsersForGroup = selectedUsersForGroup.filter(
+    (u) => String(u._id) !== String(userId)
+  );
+  updateSelectedUsersList();
+  loadAvailableUsersForGroup();
+}
+
+/* Create Group */
+async function createGroup() {
+  const groupName = document.getElementById("groupNameInput").value.trim();
+  
+  if (!groupName) {
+    alert("Please enter a group name");
+    return;
+  }
+  
+  if (selectedUsersForGroup.length < 2) {
+    alert("Please select at least 2 members");
+    return;
+  }
+  
+  token = localStorage.getItem("token");
+  const userIds = selectedUsersForGroup.map((u) => u._id);
+  
+  try {
+    const res = await fetch(`${API_BASE_URL}/chat/create-groupchat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        chatName: groupName,
+        users: userIds,
+      }),
+    });
+    
+    const data = await safeJson(res);
+    
+    if (!res.ok) {
+      alert(data?.message || "Failed to create group");
+      return;
+    }
+    
+    const chat = data?.data || data;
+    document.getElementById("createGroupModal").style.display = "none";
+    
+    // Open the new group chat
+    currentChatId = chat._id;
+    currentChat = chat;
+    initSocket();
+    socket?.emit("join_chat", currentChatId);
+    updateChatHeaderForGroup(chat);
+    loadChatHistory(currentChatId);
+    fetchChats(); // Refresh chat list
+  } catch (err) {
+    console.error("createGroup error:", err);
+    alert("Failed to create group");
+  }
+}
+
+/* Open Manage Group Modal */
+async function openManageGroupModal() {
+  if (!currentChat?.isGroupChat) return;
+  
+  const modal = document.getElementById("manageGroupModal");
+  const title = document.getElementById("manageGroupTitle");
+  const content = document.getElementById("manageGroupContent");
+  
+  if (!modal || !title || !content) return;
+  
+  title.textContent = `Manage: ${currentChat.chatName}`;
+  content.innerHTML = "";
+  
+  // Fetch full chat details
+  token = localStorage.getItem("token");
+  try {
+    const res = await fetch(`${API_BASE_URL}/chat/fetchchat`, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    const data = await safeJson(res);
+    const chats = Array.isArray(data?.data) ? data.data : [];
+    const fullChat = chats.find((c) => String(c._id) === String(currentChatId));
+    
+    if (fullChat) {
+      currentChat = fullChat;
+      renderManageGroupContent(fullChat);
+    }
+  } catch (err) {
+    console.error("Error fetching chat:", err);
+  }
+  
+  modal.style.display = "block";
+}
+
+/* Render manage group content */
+function renderManageGroupContent(chat) {
+  const content = document.getElementById("manageGroupContent");
+  if (!content) return;
+  
+  const isAdmin = chat.groupAdmin?._id?.toString() === currentUserId ||
+                 chat.groupAdmin?.toString() === currentUserId;
+  
+  let html = "";
+  
+  // Rename group (admin only)
+  if (isAdmin) {
+    html += `
+      <div class="manage-section">
+        <h3>Rename Group</h3>
+        <input type="text" id="newGroupName" value="${chat.chatName || ""}" />
+        <button onclick="renameGroupChat()" class="submit-btn" style="margin-top: 10px;">Rename</button>
+      </div>
+    `;
+  }
+  
+  // Group members
+  html += `
+    <div class="manage-section">
+      <h3>Members (${chat.users?.length || 0})</h3>
+      <div class="group-members-list">
+  `;
+  
+  chat.users?.forEach((user) => {
+    const isUserAdmin = chat.groupAdmin?._id?.toString() === user._id?.toString() ||
+                       chat.groupAdmin?.toString() === user._id?.toString();
+    const isCurrentUser = String(user._id) === String(currentUserId);
+    const canRemove = isAdmin && !isUserAdmin && !isCurrentUser;
+    
+    const avatarUrl = typeof user.avatar === "string" && user.avatar.startsWith("http")
+      ? user.avatar
+      : (user.avatar?.url || user.avatar?.secure_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png");
+    
+    html += `
+      <div class="member-item">
+        <div class="member-info">
+          <img src="${avatarUrl}" alt="${user.userName || user.fullName}" />
+          <span>${user.userName || user.fullName || user.email}</span>
+          ${isUserAdmin ? '<span class="admin-badge">Admin</span>' : ''}
+        </div>
+        ${canRemove ? `<button class="remove-member-btn" onclick="removeMemberFromGroup('${user._id}')">Remove</button>` : ''}
+      </div>
+    `;
+  });
+  
+  html += `
+      </div>
+    </div>
+  `;
+  
+  // Add members (admin only)
+  if (isAdmin) {
+    html += `
+      <div class="manage-section">
+        <h3>Add Members</h3>
+        <input type="text" id="addMemberSearch" placeholder="Search users..." 
+               oninput="searchUsersForGroup(this.value)" />
+        <div id="addMemberResults" class="available-users" style="max-height: 150px;"></div>
+      </div>
+    `;
+  }
+  
+  // Delete group (admin only)
+  if (isAdmin) {
+    html += `
+      <div class="manage-section">
+        <button onclick="deleteGroupChat()" class="submit-btn" style="background: #ff4444;">Delete Group</button>
+      </div>
+    `;
+  }
+  
+  content.innerHTML = html;
+}
+
+/* Rename group */
+window.renameGroupChat = async function() {
+  const newName = document.getElementById("newGroupName")?.value.trim();
+  if (!newName) {
+    alert("Please enter a group name");
+    return;
+  }
+  
+  token = localStorage.getItem("token");
+  try {
+    const res = await fetch(`${API_BASE_URL}/chat/renamegroup/${currentChatId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({ chatName: newName }),
+    });
+    
+    const data = await safeJson(res);
+    if (!res.ok) {
+      alert(data?.message || "Failed to rename group");
+      return;
+    }
+    
+    document.getElementById("manageGroupModal").style.display = "none";
+    fetchChats(); // Refresh chat list
+    if (currentChat) {
+      currentChat.chatName = newName;
+      updateChatHeaderForGroup(currentChat);
+    }
+  } catch (err) {
+    console.error("renameGroupChat error:", err);
+    alert("Failed to rename group");
+  }
+}
+
+/* Remove member from group */
+window.removeMemberFromGroup = async function(userId) {
+  if (!confirm("Are you sure you want to remove this member?")) return;
+  
+  token = localStorage.getItem("token");
+  try {
+    const res = await fetch(`${API_BASE_URL}/chat/remove-from-groupchat`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({ chatId: currentChatId, userId }),
+    });
+    
+    const data = await safeJson(res);
+    if (!res.ok) {
+      alert(data?.message || "Failed to remove member");
+      return;
+    }
+    
+    openManageGroupModal(); // Refresh modal
+    fetchChats(); // Refresh chat list
+    if (currentChat) {
+      const updatedChat = data?.data || data;
+      currentChat = updatedChat;
+      updateChatHeaderForGroup(updatedChat);
+    }
+  } catch (err) {
+    console.error("removeMemberFromGroup error:", err);
+    alert("Failed to remove member");
+  }
+}
+
+/* Search users for adding to group */
+window.searchUsersForGroup = async function(query) {
+  if (!query || query.length < 1) {
+    document.getElementById("addMemberResults").innerHTML = "";
+    return;
+  }
+  
+  token = localStorage.getItem("token");
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/user/search?query=${encodeURIComponent(query)}`,
+      {
+        headers: { Authorization: "Bearer " + token },
+      }
+    );
+    const data = await safeJson(res);
+    const users = Array.isArray(data?.data?.data)
+      ? data.data.data
+      : Array.isArray(data?.data)
+      ? data.data
+      : [];
+    
+    // Filter out users already in group
+    const existingUserIds = currentChat?.users?.map((u) => String(u._id)) || [];
+    const availableUsers = users.filter(
+      (u) => !existingUserIds.includes(String(u._id)) && 
+             String(u._id) !== String(currentUserId)
+    );
+    
+    renderAddMemberResults(availableUsers);
+  } catch (err) {
+    console.error("searchUsersForGroup error:", err);
+  }
+}
+
+/* Render add member results */
+function renderAddMemberResults(users = []) {
+  const container = document.getElementById("addMemberResults");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  users.forEach((user) => {
+    const div = document.createElement("div");
+    div.className = "user-option";
+    div.innerHTML = `
+      <span>${user.userName || user.fullName || user.email}</span>
+      <button onclick="addMemberToGroup('${user._id}')" style="margin-left: auto; padding: 4px 8px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer;">Add</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/* Add member to group */
+window.addMemberToGroup = async function(userId) {
+  token = localStorage.getItem("token");
+  try {
+    const res = await fetch(`${API_BASE_URL}/chat/add-to-groupchat`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({ chatId: currentChatId, users: [userId] }),
+    });
+    
+    const data = await safeJson(res);
+    if (!res.ok) {
+      alert(data?.message || "Failed to add member");
+      return;
+    }
+    
+    document.getElementById("addMemberSearch").value = "";
+    document.getElementById("addMemberResults").innerHTML = "";
+    openManageGroupModal(); // Refresh modal
+    fetchChats(); // Refresh chat list
+    if (data?.data) {
+      currentChat = data.data;
+      updateChatHeaderForGroup(data.data);
+    }
+  } catch (err) {
+    console.error("addMemberToGroup error:", err);
+    alert("Failed to add member");
+  }
+}
+
+/* Delete group */
+window.deleteGroupChat = async function() {
+  if (!confirm("Are you sure you want to delete this group? This action cannot be undone.")) {
+    return;
+  }
+  
+  token = localStorage.getItem("token");
+  try {
+    const res = await fetch(`${API_BASE_URL}/chat/delete-groupchat/${currentChatId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    });
+    
+    const data = await safeJson(res);
+    if (!res.ok) {
+      alert(data?.message || "Failed to delete group");
+      return;
+    }
+    
+    document.getElementById("manageGroupModal").style.display = "none";
+    currentChatId = null;
+    currentChat = null;
+    document.getElementById("chatUserName").textContent = "Select a chat";
+    document.getElementById("chatUserCount").textContent = "";
+    document.getElementById("messages").innerHTML = "";
+    fetchChats(); // Refresh chat list
+  } catch (err) {
+    console.error("deleteGroupChat error:", err);
+    alert("Failed to delete group");
+  }
 }
 
 /* ======================================================
@@ -583,6 +1138,12 @@ function initChatUI() {
     if (e.key === "Enter") sendMessageFlow();
   });
 
+  // Create group submit
+  document.getElementById("createGroupSubmitBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    createGroup();
+  });
+
   // logout
   document.getElementById("logoutBtn")?.addEventListener("click", () => {
     localStorage.removeItem("token");
@@ -592,6 +1153,34 @@ function initChatUI() {
     socket?.disconnect?.();
     socket = null;
     redirect("login.html");
+  });
+
+  // Create group button
+  document.getElementById("createGroupBtn")?.addEventListener("click", () => {
+    openCreateGroupModal();
+  });
+
+  // Manage group button
+  document.getElementById("manageGroupBtn")?.addEventListener("click", () => {
+    if (currentChat?.isGroupChat) {
+      openManageGroupModal();
+    }
+  });
+
+  // Modal close handlers
+  document.querySelectorAll(".close-modal").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.getElementById("createGroupModal").style.display = "none";
+      document.getElementById("manageGroupModal").style.display = "none";
+    });
+  });
+
+  // Close modal on outside click
+  window.addEventListener("click", (e) => {
+    const createModal = document.getElementById("createGroupModal");
+    const manageModal = document.getElementById("manageGroupModal");
+    if (e.target === createModal) createModal.style.display = "none";
+    if (e.target === manageModal) manageModal.style.display = "none";
   });
 }
 
