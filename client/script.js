@@ -433,6 +433,14 @@ function renderChatList(chats = []) {
           updateChatHeaderWithUser(otherUser);
         }
         loadChatHistory(currentChatId);
+        
+        // Close sidebar on mobile when chat is opened
+        if (window.innerWidth <= 768) {
+          const sidebar = document.getElementById("sidebar");
+          const backdrop = document.getElementById("sidebarBackdrop");
+          if (sidebar) sidebar.classList.remove("active");
+          if (backdrop) backdrop.style.display = "none";
+        }
       }
     });
     list.appendChild(div);
@@ -518,6 +526,14 @@ async function openChat(otherUserId) {
   initSocket();
   socket.emit("join_chat", currentChatId);
   loadChatHistory(currentChatId);
+  
+  // Close sidebar on mobile when chat is opened
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById("sidebar");
+    const backdrop = document.getElementById("sidebarBackdrop");
+    if (sidebar) sidebar.classList.remove("active");
+    if (backdrop) backdrop.style.display = "none";
+  }
 }
 
 /* ======================================================
@@ -643,9 +659,27 @@ function loadMyProfile() {
 async function openCreateGroupModal() {
   selectedUsersForGroup = [];
   document.getElementById("groupNameInput").value = "";
+  document.getElementById("groupUserSearch").value = "";
   document.getElementById("selectedUsersList").innerHTML = "";
   document.getElementById("availableUsers").innerHTML = "";
   document.getElementById("createGroupModal").style.display = "block";
+  
+  // Attach search event listener (in case modal was opened before page fully loaded)
+  const searchInput = document.getElementById("groupUserSearch");
+  if (searchInput) {
+    // Remove existing listener to avoid duplicates
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+    
+    newSearchInput.addEventListener("input", (e) => {
+      const query = (e.target.value || "").trim();
+      if (query) {
+        searchUsersForGroupCreation(query);
+      } else {
+        loadAvailableUsersForGroup(); // Show all users if search is empty
+      }
+    });
+  }
   
   // Load available users
   await loadAvailableUsersForGroup();
@@ -668,6 +702,34 @@ async function loadAvailableUsersForGroup() {
     renderAvailableUsers(users);
   } catch (err) {
     console.error("loadAvailableUsersForGroup error:", err);
+  }
+}
+
+/* Search users for group creation */
+async function searchUsersForGroupCreation(query) {
+  if (!query || query.length < 1) {
+    loadAvailableUsersForGroup();
+    return;
+  }
+  
+  token = localStorage.getItem("token");
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/user/search?query=${encodeURIComponent(query)}`,
+      {
+        headers: { Authorization: "Bearer " + token },
+      }
+    );
+    const data = await safeJson(res);
+    const users = Array.isArray(data?.data?.data)
+      ? data.data.data
+      : Array.isArray(data?.data)
+      ? data.data
+      : [];
+    
+    renderAvailableUsers(users);
+  } catch (err) {
+    console.error("searchUsersForGroupCreation error:", err);
   }
 }
 
@@ -1123,6 +1185,9 @@ function initChatUI() {
   loadMyProfile();
   fetchChats();
 
+  // Mobile menu toggle
+  setupMobileMenu();
+
   // search input
   const searchInput = document.getElementById("userSearch");
   searchInput?.addEventListener("input", (e) => {
@@ -1142,6 +1207,16 @@ function initChatUI() {
   document.getElementById("createGroupSubmitBtn")?.addEventListener("click", (e) => {
     e.preventDefault();
     createGroup();
+  });
+
+  // Group user search in create modal
+  document.getElementById("groupUserSearch")?.addEventListener("input", (e) => {
+    const query = (e.target.value || "").trim();
+    if (query) {
+      searchUsersForGroupCreation(query);
+    } else {
+      loadAvailableUsersForGroup(); // Show all users if search is empty
+    }
   });
 
   // logout
@@ -1182,6 +1257,41 @@ function initChatUI() {
     if (e.target === createModal) createModal.style.display = "none";
     if (e.target === manageModal) manageModal.style.display = "none";
   });
+}
+
+/* ======================================================
+   Mobile Menu Toggle
+   ====================================================== */
+function setupMobileMenu() {
+  const menuToggle = document.getElementById("mobileMenuToggle");
+  const sidebar = document.getElementById("sidebar");
+  const backdrop = document.getElementById("sidebarBackdrop");
+
+  if (!menuToggle || !sidebar || !backdrop) return;
+
+  menuToggle.addEventListener("click", () => {
+    sidebar.classList.toggle("active");
+    backdrop.style.display = sidebar.classList.contains("active") ? "block" : "none";
+  });
+
+  backdrop.addEventListener("click", () => {
+    sidebar.classList.remove("active");
+    backdrop.style.display = "none";
+  });
+
+  // Close sidebar when a chat is selected (on mobile)
+  const chatItems = document.getElementById("usersList");
+  if (chatItems) {
+    // Use event delegation since chat items are dynamically created
+    chatItems.addEventListener("click", (e) => {
+      if (e.target.closest(".chat-item")) {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove("active");
+          backdrop.style.display = "none";
+        }
+      }
+    });
+  }
 }
 
 /* ======================================================

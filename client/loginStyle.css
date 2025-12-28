@@ -29,3 +29,42 @@
     color: red;
     margin-top: 10px;
 }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .login-container {
+        width: 90%;
+        margin: 50px auto;
+        padding: 20px;
+    }
+
+    .login-container input {
+        width: 95%;
+        padding: 12px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    .login-container button {
+        width: 95%;
+        padding: 12px;
+        font-size: 16px;
+        min-height: 44px; /* Touch-friendly */
+    }
+
+    .login-container h2 {
+        font-size: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-container {
+        width: 95%;
+        margin: 30px auto;
+        padding: 15px;
+    }
+
+    .login-container h2 {
+        font-size: 20px;
+        margin-bottom: 20px;
+    }
+}
