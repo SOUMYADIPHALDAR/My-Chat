@@ -24,6 +24,7 @@ body {
     color: white;
     padding: 20px;
     overflow-y: auto;
+    position: relative; /* Ensure proper positioning context */
 }
 
 /* Search Bar */
@@ -540,19 +541,23 @@ body {
 
 /* Mobile Menu Toggle Button */
 .mobile-menu-toggle {
-  display: none;
+  display: none; /* Hidden by default, shown only on mobile */
+  visibility: hidden; /* Double hide for safety */
   position: fixed;
-  top: 15px;
-  left: 15px;
+  top: 10px;
+  left: 10px;
   z-index: 1001;
   background: #4caf50;
   color: white;
   border: none;
-  padding: 10px 15px;
+  padding: 10px 12px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s ease;
+  opacity: 0; /* Triple hide */
+  pointer-events: none; /* Disable interactions when hidden */
 }
 
 .mobile-menu-toggle:hover {
@@ -569,6 +574,33 @@ body {
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
   z-index: 998;
+}
+
+/* Ensure mobile menu is hidden on larger screens */
+@media (min-width: 769px) {
+  .mobile-menu-toggle {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .sidebar-backdrop {
+    display: none !important;
+  }
+
+  .sidebar {
+    position: static !important;
+    left: auto !important;
+    width: 25% !important;
+  }
+
+  .chat-window {
+    width: 75% !important;
+  }
+
+  .chat-header,
+  #chatHeader {
+    padding-left: 15px !important; /* Reset mobile padding */
+  }
 }
 
 /* Tablet Styles (max-width: 1024px) */
@@ -594,7 +626,10 @@ body {
   }
 
   .mobile-menu-toggle {
-    display: block;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
 
   .sidebar-backdrop {
@@ -612,12 +647,12 @@ body {
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
   }
 
-  .sidebar.active {
-    left: 0;
-  }
-
   .chat-window {
     width: 100%;
+  }
+
+  .sidebar-header {
+    position: relative;
   }
 
   .sidebar-header h2 {
@@ -630,12 +665,12 @@ body {
   }
 
   .chat-header {
-    padding: 12px;
+    padding: 12px 12px 12px 60px; /* Add left padding for menu button */
     min-height: 50px;
   }
 
   #chatHeader {
-    padding: 10px;
+    padding: 10px 10px 10px 60px; /* Add left padding for menu button */
     gap: 8px;
   }
 
@@ -777,6 +812,8 @@ body {
 
   .sidebar-header {
     margin-bottom: 12px;
+    padding-left: 50px; /* Add padding to accommodate menu button */
+    position: relative;
   }
 
   .sidebar-header h2 {
@@ -799,11 +836,11 @@ body {
   }
 
   .chat-header {
-    padding: 10px;
+    padding: 10px 10px 10px 55px; /* Add left padding for menu button */
   }
 
   #chatHeader {
-    padding: 8px;
+    padding: 8px 8px 8px 55px; /* Add left padding for menu button */
     gap: 6px;
   }
 
