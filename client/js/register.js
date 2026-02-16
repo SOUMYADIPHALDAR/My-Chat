@@ -1,3 +1,4 @@
+
 const registerBtn = document.getElementById("registerBtn");
 const nameInput = document.getElementById("regName");
 const userNameInput = document.getElementById("userName");
@@ -6,50 +7,8 @@ const passwordInput = document.getElementById("regPassword");
 const avatarInput = document.getElementById("regAvatar");
 const errorText = document.getElementById("registerError");
 
-// storage utilites
-function getUsers(){
-    const users = localStorage.getItem("users");
-    return users ? JSON.parse(users) : [];
-}
-
-function saveUsers(users){
-    localStorage.setItem("users", JSON.stringify(users));
-}
-
-function emailExists(email){
-    const users = getUsers();
-    return users.some(user => user.email === email);
-}
-
-function userNameExists(userName){
-    const users = getUsers();
-    return users.some(user => user.userName === userName);
-}
-
-// validation
-function validationInput(name, userName, email, password){
-    if(!name || !userName || !email || !password){
-        return "All fields are required..";
-    }
-
-    if(password.length < 6){
-        return "Password must be in 6 characters..";
-    }
-
-    if(emailExists(email)){
-        return "Email already registered";
-    }
-
-    if(userNameExists(userName)){
-        return "User name is taken";
-    }
-
-    return null;
-}
-
-// Handle Register
-function handleRegister(){
-    const name = nameInput.value.trim();
+async function handleRegister() {
+    const fullName = nameInput.value.trim();
     const userName = userNameInput.value.trim();
     const email = emailInput.value.trim();
     const password = passwordInput.value.trim();
@@ -57,27 +16,44 @@ function handleRegister(){
 
     errorText.textContent = "";
 
-    const validationError = validationInput(name, userName, email, password);
-    if(validationError){
-        errorText.textContent = validationError;
+    if(!fullName || !userName || !email || !password){
+        errorText.textContent = "All fields are required";
         return;
     }
 
-    const users = getUsers();
-    
-    const newUser = {
-        id: Date.now(),
-        name,
-        userName,
-        email,
-        password,
-        avatar: avatarFile ? URL.createObjectURL(avatarFile) : null
-    };
+    if(password.length < 6){
+        errorText.textContent = "Password must have atleast 6 characters";
+        return;
+    }
 
-    users.push(newUser);
-    saveUsers(users);
+    const formData = new FormData();
 
-    window.location.href = "login.html";
+    formData.append("fullName", fullName);
+    formData.append("userName", userName);
+    formData.append("email", email);
+    formData.append("password", password);
+
+    if(avatarFile){
+        formData.append("avatar", avatarFile);
+    }
+
+    try {
+        const response = await fetch("http://localhost:5000/user/register", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = response.json();
+
+        if(!response.ok){
+            errorText.textContent = data.message || "Registration failed.";
+            return;
+        }
+
+        window.location.href = "login.html";
+    } catch (error) {
+        errorText.textContent = "Server error. Try again.";
+    }
 }
 
 registerBtn.addEventListener("click", handleRegister);
