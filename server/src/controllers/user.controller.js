@@ -141,6 +141,22 @@ const getAllUser = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, users, "Users fetched successfully.."));
 });
 
+const getMyProfile = asyncHandler(async(req, res) => {
+  const myId = req.user._id;
+
+  const myInfo = await User.findById(myId).select(
+    "userName email fullName avatar"
+  );
+
+  if(!myInfo){
+    throw new apiError(404, "Your information not found..");
+  }
+
+  return res.status(200).json(
+    new apiResponse(200, myInfo, "Your information fetched successfully..")
+  )
+});
+
 const searchUsers = asyncHandler(async (req, res) => {
   const query = req.query.query;
 
@@ -322,6 +338,7 @@ module.exports = {
   registerUser,
   logIn,
   getAllUser,
+  getMyProfile,
   searchUsers,
   logOut,
   refreshAccessToken,
