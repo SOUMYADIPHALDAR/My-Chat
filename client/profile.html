@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Profile</title>
+    <link rel="stylesheet" href="profile.css" />
+  </head>
+
+  <body>
+    <div class="container">
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div>
+          <h2>My Chat</h2>
+
+          <div class="sidebar-nav">
+            <button id="goDashboardBtn">🏠 Dashboard</button>
+          </div>
+        </div>
+
+        <div class="sidebar-bottom">
+          <button id="logoutBtn">🚪 Logout</button>
+        </div>
+      </div>
+
+      <!-- Profile Section -->
+      <div class="profile-section">
+        <div class="profile-card">
+
+          <!-- Header with Edit Icon -->
+          <div class="profile-header">
+            <h2>My Profile</h2>
+            <button id="editProfileBtn" class="edit-btn">✏</button>
+          </div>
+
+          <!-- Avatar -->
+          <div class="profile-avatar">
+            <img id="profileAvatar" src="" alt="Avatar" />
+          </div>
+
+          <!-- Display Information (READ ONLY) -->
+          <div class="profile-display">
+            <p><strong>Full Name:</strong> <span id="displayFullName"></span></p>
+            <p><strong>Username:</strong> <span id="displayUserName"></span></p>
+            <p><strong>Email:</strong> <span id="displayEmail"></span></p>
+            <p><strong>Member Since:</strong> <span id="displayCreatedAt"></span></p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODAL ================= -->
+
+    <div id="editModal" class="modal">
+      <div class="modal-content">
+        <h3>Update Profile</h3>
+
+        <input type="text" id="editFullName" placeholder="Full Name" />
+        <input type="email" id="editEmail" placeholder="Email" />
+
+        <div class="modal-actions">
+          <button id="cancelEdit">Cancel</button>
+          <button id="saveEdit">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="profile.js"></script>
+  </body>
+</html>
