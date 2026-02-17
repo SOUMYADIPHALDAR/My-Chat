@@ -47,6 +47,11 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
   });
 
+   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+
+   user.refreshToken = refreshToken;
+   await user.save({validateBeforeSave: true});
+
   const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
@@ -57,8 +62,16 @@ const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
+  const option = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict"
+  };
+
   return res
     .status(201)
+    .cookie("accessToken", accessToken, option)
+    .cookie("refreshToken", refreshToken, option)
     .json(new apiResponse(200, createdUser, "User registered successfully..."));
 });
 
@@ -83,12 +96,16 @@ const logIn = asyncHandler(async (req, res) => {
     user._id
   );
 
+  user.refreshToken = refreshToken;
+  await user.save();
+
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
   const option = {
     httpOnly: true,
     secure: true,
+    sameSite: "strict"
   };
 
   return res

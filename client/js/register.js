@@ -50,7 +50,7 @@ async function handleRegister() {
             return;
         }
 
-        window.location.href = "login.html";
+        window.location.href = "index.html";
     } catch (error) {
         errorText.textContent = "Server error. Try again.";
     }
