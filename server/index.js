@@ -13,12 +13,12 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "client")));
+app.use(cookieParser());
 app.use(cors({
-  origin: "http://127.0.0.1:5500",
+  origin: "http://localhost:5000",
   credentials: true
 }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/user", authRouter);
 app.use("/chat", chatRouter);

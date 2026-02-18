@@ -50,7 +50,7 @@ const registerUser = asyncHandler(async (req, res) => {
    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
 
    user.refreshToken = refreshToken;
-   await user.save({validateBeforeSave: true});
+   await user.save({validateBeforeSave: false});
 
   const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
@@ -105,7 +105,6 @@ const logIn = asyncHandler(async (req, res) => {
   const option = {
     httpOnly: true,
     secure: true,
-    sameSite: "strict"
   };
 
   return res
@@ -193,7 +192,6 @@ const logOut = asyncHandler(async (req, res) => {
   );
   const option = {
     httpOnly: true,
-    secure: true,
   };
 
   return res
