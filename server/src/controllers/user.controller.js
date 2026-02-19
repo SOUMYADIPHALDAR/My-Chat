@@ -182,6 +182,7 @@ const searchUsers = asyncHandler(async (req, res) => {
 });
 
 const logOut = asyncHandler(async (req, res) => {
+  
   await User.findByIdAndUpdate(
     req.user._id,
     {
@@ -223,9 +224,13 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const { accessToken, newRefreshToken } =
       await generateAccessAndRefreshToken(user._id);
+
+    user.refreshToken = newRefreshToken;
+    await user.save({ validateBeforeSave: false });
+
     const option = {
       httpOnly: true,
-      secure: true,
+      secure: false,
     };
 
     return res

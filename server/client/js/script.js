@@ -82,8 +82,18 @@ async function loadUsers(){
     });
 }
 
-function handleLogOut() {
-   console.log("logout clicked");
+async function handleLogOut() {
+   const response = await fetch(`${Base_URL}/user/logout`, {
+    method: "POST",
+    credentials: "include"
+   });
+
+   if(!response.ok){
+    console.log("Failed to logout,");
+    return;
+   }
+
+   window.location.href = "login.html";
 }
 
 function handleMsgSend() {

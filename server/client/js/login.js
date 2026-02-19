@@ -3,11 +3,6 @@ const passwordInput = document.getElementById("password");
 const logInBtn = document.getElementById("loginBtn");
 const errorText = document.getElementById("loginError");
 
-// storage Utilities
-function getUsers(){
-    const users = localStorage.getItem("users");
-    return users ? JSON.parse(users) : [];
-}
 
 //login validation
 async function loginValidation(){
@@ -30,15 +25,12 @@ async function loginValidation(){
         body: JSON.stringify({email, password})
     });
 
-    const data = response.json();
+    const data = await response.json();
 
     if(!response.ok){
         errorText.textContent = data.message || "Login Failed";
         return;
     }
-
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("currentUser", JSON.stringify(data.user));
 
     window.location.href = "index.html";
 

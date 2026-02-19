@@ -25,9 +25,9 @@ async function fetchWithAuth(url, options = {}){
 
         }
 
-        response = await fetch(url, config);
+        result = await fetch(url, config);
 
-        return response;
+        return result;
     } catch (error) {
         console.log("Fetch error: ", error.message);
         throw error;

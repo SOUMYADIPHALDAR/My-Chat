@@ -17,7 +17,7 @@ const verifyJwt = asyncHandler(async(req, res, next) => {
         if (!user) {
             throw new apiError(404, "Invalid Token..");
         }
-
+        
         req.user = user;
         next();
     } catch (error) {
