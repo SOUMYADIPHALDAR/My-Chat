@@ -8,7 +8,6 @@ function init(){
 }
 
 function setUpEventListeners(){
-    document.getElementById("logoutBtn").addEventListener("click", handleLogOut);
 
     document.getElementById("sendBtn").addEventListener("click", handleMsgSend);
 
@@ -18,6 +17,9 @@ function setUpEventListeners(){
     document.getElementById("userSearch").addEventListener("keypress", (e) => {
         if(e.key === "Enter") loadUsers();
     });
+    document.getElementById("myProfile").addEventListener("click", () => {
+        window.location.href = "profile.html";
+    })
 }
 
 async function loadMyProfile(){
@@ -80,20 +82,6 @@ async function loadUsers(){
 
         usersList.appendChild(userItem);
     });
-}
-
-async function handleLogOut() {
-   const response = await fetch(`${Base_URL}/user/logout`, {
-    method: "POST",
-    credentials: "include"
-   });
-
-   if(!response.ok){
-    console.log("Failed to logout,");
-    return;
-   }
-
-   window.location.href = "login.html";
 }
 
 function handleMsgSend() {
