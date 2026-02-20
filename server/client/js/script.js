@@ -11,7 +11,7 @@ function init(){
 }
 
 function setUpEventListeners(){
-    
+
     document.getElementById("userSearch").addEventListener("keypress", (e) => {
         if(e.key === "Enter") loadUsers();
     });
@@ -86,21 +86,40 @@ function openChat(user) {
    console.log("open chat with", user.fullName);
 }
 
-function setUpSocketsEvent(){
+function setUpSocketsEvent() {
     const input = document.getElementById("msgInput");
     const sendBtn = document.getElementById("sendBtn");
+    const messages = document.getElementById("messages");
+
+    function addMessage(content, isOwn = false) {
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("message");
+        messageDiv.classList.add(isOwn ? "right" : "left");
+        messageDiv.textContent = content;
+
+        messages.appendChild(messageDiv);
+
+        // Scroll only messages container
+        messages.scrollTop = messages.scrollHeight;
+    }
 
     sendBtn.addEventListener("click", () => {
-        if(input.value.trim()){
+        if (input.value.trim()) {
             socket.emit("message", input.value);
+            addMessage(input.value, true); // your message
             input.value = "";
         }
     });
 
     input.addEventListener("keypress", (e) => {
-        if(e.key === "Enter" && input.value.trim()){
+        if (e.key === "Enter" && input.value.trim()) {
             socket.emit("message", input.value);
+            addMessage(input.value, true);
             input.value = "";
         }
-    })
+    });
+
+    socket.on("message", (msg) => {
+        addMessage(msg, false); // received message
+    });
 }
