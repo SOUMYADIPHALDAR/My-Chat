@@ -2,18 +2,16 @@ const Base_URL = "http://localhost:5000";
 
 document.addEventListener("DOMContentLoaded", init);
 
+let socket;
 function init(){
     setUpEventListeners();
     loadMyProfile();
+    socket = io();
+    setUpSocketsEvent();
 }
 
 function setUpEventListeners(){
-
-    document.getElementById("sendBtn").addEventListener("click", handleMsgSend);
-
-    document.getElementById("msgInput").addEventListener("keypress", (e) => {
-        if(e.key === "Enter") handleMsgSend();
-    });
+    
     document.getElementById("userSearch").addEventListener("keypress", (e) => {
         if(e.key === "Enter") loadUsers();
     });
@@ -84,10 +82,25 @@ async function loadUsers(){
     });
 }
 
-function handleMsgSend() {
-   console.log("message send");
-}
-
 function openChat(user) {
    console.log("open chat with", user.fullName);
+}
+
+function setUpSocketsEvent(){
+    const input = document.getElementById("msgInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    sendBtn.addEventListener("click", () => {
+        if(input.value.trim()){
+            socket.emit("message", input.value);
+            input.value = "";
+        }
+    });
+
+    input.addEventListener("keypress", (e) => {
+        if(e.key === "Enter" && input.value.trim()){
+            socket.emit("message", input.value);
+            input.value = "";
+        }
+    })
 }
