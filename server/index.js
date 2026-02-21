@@ -1,5 +1,6 @@
 const app = require("./src/app.js");
 const connectDb = require("./src/config/db.js");
+const registerSocketHandlers = require("./src/socket/webSocket.js");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 
@@ -7,11 +8,7 @@ const port = process.env.PORT || 3000;
 const server = createServer(app);
 const io = new Server(server);
 
-io.on("connection", (socket) => {
-  socket.on("message", (msg) => {
-    io.emit("message", msg);
-  })
-})
+registerSocketHandlers(io);
 
 connectDb()
   .then(() => {

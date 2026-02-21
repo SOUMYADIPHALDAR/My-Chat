@@ -91,6 +91,11 @@ function setUpSocketsEvent() {
     const sendBtn = document.getElementById("sendBtn");
     const messages = document.getElementById("messages");
 
+    const roomId = "room1";
+
+    // ✅ Match backend event name
+    socket.emit("join-room", roomId);
+
     function addMessage(content, isOwn = false) {
         const messageDiv = document.createElement("div");
         messageDiv.classList.add("message");
@@ -98,28 +103,30 @@ function setUpSocketsEvent() {
         messageDiv.textContent = content;
 
         messages.appendChild(messageDiv);
-
-        // Scroll only messages container
         messages.scrollTop = messages.scrollHeight;
     }
 
-    sendBtn.addEventListener("click", () => {
-        if (input.value.trim()) {
-            socket.emit("message", input.value);
-            addMessage(input.value, true); // your message
-            input.value = "";
-        }
-    });
+    function sendMessage() {
+        if (!input.value.trim()) return;
+
+        socket.emit("message", {
+            roomId: roomId,
+            message: input.value
+        });
+
+        addMessage(input.value, true);
+        input.value = "";
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
 
     input.addEventListener("keypress", (e) => {
-        if (e.key === "Enter" && input.value.trim()) {
-            socket.emit("message", input.value);
-            addMessage(input.value, true);
-            input.value = "";
+        if (e.key === "Enter") {
+            sendMessage();
         }
     });
 
-    socket.on("message", (msg) => {
-        addMessage(msg, false); // received message
+    socket.on("message", (data) => {
+        addMessage(data.message, false);
     });
 }
