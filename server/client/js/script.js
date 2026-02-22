@@ -114,7 +114,6 @@ function setUpSocketsEvent() {
             message: input.value
         });
 
-        addMessage(input.value, true);
         input.value = "";
     }
 
@@ -127,6 +126,7 @@ function setUpSocketsEvent() {
     });
 
     socket.on("message", (data) => {
-        addMessage(data.message, false);
+        const isOwn = data.sender === socket.id;
+        addMessage(data.message, isOwn);
     });
 }
