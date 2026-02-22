@@ -1,21 +1,28 @@
 const socketAuthValidation = require("../middlewares/socketAuth.middleware.js");
+const User = require("../models/user.model.js");
 
 const registerSocketHandlers = (io) => {
 
   io.use(socketAuthValidation);
 
-  io.on("connection", (socket) => {
-    socket.on("join-room", (roomId) => {
+  io.on("connect", (socket) => {
+    socket.on("join-room", async({roomId, otherUserId}) => {
         socket.join(roomId);
-    });
 
-    console.log("user connected: ", user.name);
+      const otherUser = await User.findById(otherUserId);
+      if(!otherUser) return;
+
+      socket.emit("chat-header", {
+        name: otherUser.fullName,
+        avatar: otherUser.avatar
+      });
+    });
 
     socket.on("message", ({roomId, message}) => {
         io.to(roomId).emit("message", {
             sender: socket.user._id,
-            name: user.name,
-            avatar: user.avatar,
+            name: socket.user.name,
+            avatar: socket.user.avatar,
             message
         });
     });

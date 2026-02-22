@@ -3,10 +3,10 @@ const Base_URL = "http://localhost:5000";
 document.addEventListener("DOMContentLoaded", init);
 
 let socket;
+let currentUserId = null;
 function init(){
     setUpEventListeners();
     loadMyProfile();
-    socket = io();
     setUpSocketsEvent();
 }
 
@@ -23,7 +23,7 @@ function setUpEventListeners(){
 async function loadMyProfile(){
     const response = await fetch(`${Base_URL}/user/profile`, {
         method: "GET", 
-        credentials: "include" 
+        credentials: "include"
     });
 
     if(!response.ok){
@@ -32,6 +32,7 @@ async function loadMyProfile(){
     }
 
     const data = await response.json();
+    currentUserId = data.data._id;
 
     document.getElementById("myName").innerHTML = data.data.fullName;
     document.getElementById("myAvatar").src = data.data.avatar;
@@ -83,8 +84,17 @@ async function loadUsers(){
 }
 
 function openChat(user) {
-   console.log("open chat with", user.fullName);
-}
+   const otherUserId = user._id;
+
+   const roomId = [currentUserId, otherUserId]
+   .sort()
+   .join("_")
+
+   socket.emit("join-room", {
+    roomId,
+    otherUserId
+   });
+};
 
 function setUpSocketsEvent() {
     const input = document.getElementById("msgInput");
@@ -93,8 +103,23 @@ function setUpSocketsEvent() {
 
     const roomId = "room1";
 
-    // ✅ Match backend event name
-    socket.emit("join-room", roomId);
+    socket = io(`${Base_URL}`, {
+       withCredentials: true
+    });
+
+    socket.on("connect_error", (err) => {
+        console.log("Socket connection failed..", err.message);
+    })
+
+    socket.on("connect", () => {
+        socket.emit("join-room", roomId);
+    });
+
+    socket.on("chat-header", (data) => {
+        
+        document.getElementById("chatUserName").textContent = data.name;
+        document.getElementById("chatAvatar").src = data.avatar;
+    });
 
     function addMessage(content, isOwn = false) {
         const messageDiv = document.createElement("div");
@@ -126,7 +151,7 @@ function setUpSocketsEvent() {
     });
 
     socket.on("message", (data) => {
-        const isOwn = data.sender === socket.id;
+        const isOwn = data.sender === currentUserId;
         addMessage(data.message, isOwn);
     });
 }

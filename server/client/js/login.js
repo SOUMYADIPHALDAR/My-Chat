@@ -32,6 +32,11 @@ async function loginValidation(){
         return;
     }
 
+    localStorage.setItem("token", data.token);
+    if(!localStorage.getItem("token")){
+        window.location.href = "login.html";
+    }
+
     window.location.href = "index.html";
 
    } catch (error) {
