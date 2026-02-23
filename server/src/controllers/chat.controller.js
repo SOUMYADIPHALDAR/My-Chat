@@ -7,9 +7,9 @@ const Message = require("../models/message.model.js");
 const { userInChat, isGroupAdmin } = require("../utils/chatPermission.js");
 
 const accessChat = asyncHandler(async (req, res) => {
-  const { userId } = req.body;
-
-  if (!userId) {
+  const { otherUserId } = req.body;
+  
+  if (!otherUserId) {
     return res.status(400).json({
       message: "userId is required",
     });
@@ -17,10 +17,10 @@ const accessChat = asyncHandler(async (req, res) => {
 
   const myId = req.user._id;
 
-  // 1️⃣ Check if private chat already exists
+  // Check if private chat already exists
   let existingChat = await Chat.findOne({
     isGroupChat: false,
-    users: { $all: [myId, userId] },
+    users: { $all: [myId, otherUserId] },
   }).populate("users", "fullName userName email avatar");
 
   if (existingChat) {
@@ -34,7 +34,7 @@ const accessChat = asyncHandler(async (req, res) => {
   const newChat = await Chat.create({
     chatName: "Private Chat",
     isGroupChat: false,
-    users: [myId, userId],
+    users: [myId, otherUserId],
   });
 
   const finalChat = await Chat.findById(newChat._id).populate(

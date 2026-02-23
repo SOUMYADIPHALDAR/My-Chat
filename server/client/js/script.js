@@ -57,7 +57,7 @@ async function loadUsers(){
         return;
     }
 
-    const data = await response.json();
+    const data = await response.json();  
     const users = data.data.data;
 
     const usersList = document.getElementById("usersList");
@@ -83,7 +83,7 @@ async function loadUsers(){
     });
 }
 
-function openChat(user) {
+async function openChat(user) {
    const otherUserId = user._id;
 
    const roomId = [currentUserId, otherUserId]
@@ -94,14 +94,28 @@ function openChat(user) {
     roomId,
     otherUserId
    });
+
+   try {
+    const response =  await fetch(`${Base_URL}/chat/accessChat`, {
+        method: "POST",
+        headers: {
+            "content-type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({otherUserId})
+    })
+    
+    const data = response.json();
+    console.log(data);
+   } catch (err) {
+    console.log("Failed to store chats.", err.message);
+   }
 };
 
 function setUpSocketsEvent() {
     const input = document.getElementById("msgInput");
     const sendBtn = document.getElementById("sendBtn");
     const messages = document.getElementById("messages");
-
-    const roomId = "room1";
 
     socket = io(`${Base_URL}`, {
        withCredentials: true
@@ -110,10 +124,6 @@ function setUpSocketsEvent() {
     socket.on("connect_error", (err) => {
         console.log("Socket connection failed..", err.message);
     })
-
-    socket.on("connect", () => {
-        socket.emit("join-room", roomId);
-    });
 
     socket.on("chat-header", (data) => {
         
@@ -131,7 +141,7 @@ function setUpSocketsEvent() {
         messages.scrollTop = messages.scrollHeight;
     }
 
-    function sendMessage() {
+    async function sendMessage() {
         if (!input.value.trim()) return;
 
         socket.emit("message", {
@@ -154,4 +164,4 @@ function setUpSocketsEvent() {
         const isOwn = data.sender === currentUserId;
         addMessage(data.message, isOwn);
     });
-}
+};
