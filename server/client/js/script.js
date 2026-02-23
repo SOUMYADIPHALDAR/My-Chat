@@ -4,9 +4,11 @@ document.addEventListener("DOMContentLoaded", init);
 
 let socket;
 let currentUserId = null;
+let activateChatId = null;
 function init(){
     setUpEventListeners();
     loadMyProfile();
+    fetchChat();
     setUpSocketsEvent();
 }
 
@@ -102,15 +104,36 @@ async function openChat(user) {
             "content-type": "application/json"
         },
         credentials: "include",
-        body: JSON.stringify({otherUserId})
+        body: JSON.stringify({userId: otherUserId})
     })
     
     const data = response.json();
-    console.log(data);
+    
    } catch (err) {
     console.log("Failed to store chats.", err.message);
    }
 };
+
+async function fetchChat(){
+   try {
+     const response = await fetch(`${Base_URL}/chat/fetchchat`, {
+         method: "GET",
+         credentials: "include"
+     });
+ 
+     if(!response.ok){
+         console.log("Failed to fetch chats.");
+         return;
+     }
+ 
+     const data = response.json();
+     const chats = data.data;
+     renderChats(chats);
+
+   } catch (err) {
+    console.log("Error loading chats: ", err.message);
+   }
+}
 
 function setUpSocketsEvent() {
     const input = document.getElementById("msgInput");
@@ -165,3 +188,59 @@ function setUpSocketsEvent() {
         addMessage(data.message, isOwn);
     });
 };
+
+function renderChats(chats){
+    const usersList = document.getElementById("usersList");
+    usersList.innerHTML = "";
+
+    if(!chats || !chats.length == 0){
+        usersList.innerHTML = "<p>You don't even start chatting.</p>";
+        return;
+    }
+
+    chats.forEach (chat => {
+        const otherUser = chat.users.find(
+            user => user._id != currentUserId
+        );
+
+        const chatItem = document.createElement("div");
+        chatItem.classList.add("user-item");
+
+        chatItem.innerHTML = `
+         <img src="${otherUser.avatar}" />
+         <div>
+            <strong>${otherUser.fullName}</strong>
+            <p>${chat.latestMessage?.message || ""}</p>
+         </div>
+        `;
+
+        chatItem.addEventListener("click", () => {
+            openExistingChat(chat);
+        });
+
+        usersList.appendChild(chatItem);
+    })
+};
+
+async function openExistingChat(chat){
+    const otherUser = chat.users.find(
+        user => user._id != currentUserId
+    );
+
+    document.getElementById("chatAvatar").src = otherUser.avatar;
+    document.getElementById("chatUserName").textContent = otherUser.fullName;
+
+    activateChatId = chat._id;
+
+    socket.emit("join-room", {
+        roomId: activateChatId
+    });
+
+    document.getElementById("messages").innerHTML = "";
+
+    await loadMessages(activateChatId);
+};
+
+async function loadMessages(chatId){
+    console.log("hi");
+}
