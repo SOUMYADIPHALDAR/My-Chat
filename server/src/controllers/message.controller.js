@@ -6,7 +6,7 @@ const Chat = require("../models/chat.model.js");
 
 const sendMessage = asyncHandler(async (req, res) => {
   const { content, chatId } = req.body;
-  console.log(chatId);
+  
   if (!content || !chatId) {
     throw new apiError(400, "content and chatId is required..");
   }

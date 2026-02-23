@@ -125,7 +125,7 @@ async function fetchChat() {
       return;
     }
 
-    const data = response.json();
+    const data = await response.json();
     const chats = data.data;
     renderChats(chats);
   } catch (err) {
@@ -216,13 +216,14 @@ function addMessage(content, isOwn = false) {
 function renderChats(chats) {
   const usersList = document.getElementById("usersList");
   usersList.innerHTML = "";
-
-  if (!chats || !chats.length == 0) {
+    
+  if (!chats || !chats.length === 0) {
     usersList.innerHTML = "<p>You don't even start chatting.</p>";
     return;
   }
 
   chats.forEach((chat) => {
+    
     const otherUser = chat.users.find((user) => user._id != currentUserId);
 
     const chatItem = document.createElement("div");
@@ -239,17 +240,18 @@ function renderChats(chats) {
     chatItem.addEventListener("click", () => {
       openExistingChat(chat);
     });
-
+    
     usersList.appendChild(chatItem);
   });
 }
 
 async function openExistingChat(chat) {
+   
   const otherUser = chat.users.find((user) => user._id != currentUserId);
 
   document.getElementById("chatAvatar").src = otherUser.avatar;
   document.getElementById("chatUserName").textContent = otherUser.fullName;
-
+    
   activateChatId = chat._id;
 
   socket.emit("join-room", {
@@ -257,12 +259,13 @@ async function openExistingChat(chat) {
   });
 
   document.getElementById("messages").innerHTML = "";
-
+  
   await loadMessages(activateChatId);
 }
 
 async function loadMessages(chatId) {
   try {
+   
     const response = await fetch(`${Base_URL}/message/get/${chatId}`, {
       method: "GET",
       credentials: "include",
@@ -272,12 +275,12 @@ async function loadMessages(chatId) {
       console.log("Failed to load messages");
       return;
     }
-    const data = response.json();
+    const data = await response.json();
     const messages = data.data;
 
     messages.forEach((msg) => {
       const isOwn = msg.sender._id === currentUserId;
-      addMessage(msg.message, isOwn);
+      addMessage(msg.content, isOwn);
     });
   } catch (err) {
     console.log("Error to load messages.", err.message);
