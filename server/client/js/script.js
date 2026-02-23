@@ -1,3 +1,4 @@
+
 const Base_URL = "http://localhost:5000";
 
 document.addEventListener("DOMContentLoaded", init);
@@ -5,208 +6,229 @@ document.addEventListener("DOMContentLoaded", init);
 let socket;
 let currentUserId = null;
 let activateChatId = null;
-function init(){
-    setUpEventListeners();
-    loadMyProfile();
-    fetchChat();
-    setUpSocketsEvent();
+function init() {
+  setUpEventListeners();
+  loadMyProfile();
+  fetchChat();
+  setUpSocketsEvent();
 }
 
-function setUpEventListeners(){
-
-    document.getElementById("userSearch").addEventListener("keypress", (e) => {
-        if(e.key === "Enter") loadUsers();
-    });
-    document.getElementById("myProfile").addEventListener("click", () => {
-        window.location.href = "profile.html";
-    })
+function setUpEventListeners() {
+  document.getElementById("userSearch").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") loadUsers();
+  });
+  document.getElementById("myProfile").addEventListener("click", () => {
+    window.location.href = "profile.html";
+  });
 }
 
-async function loadMyProfile(){
-    const response = await fetch(`${Base_URL}/user/profile`, {
-        method: "GET", 
-        credentials: "include"
-    });
+async function loadMyProfile() {
+  const response = await fetch(`${Base_URL}/user/profile`, {
+    method: "GET",
+    credentials: "include",
+  });
 
-    if(!response.ok){
-        console.log("Profile Info fetched failed");
-        return;
-    }
+  if (!response.ok) {
+    console.log("Profile Info fetched failed");
+    return;
+  }
 
-    const data = await response.json();
-    currentUserId = data.data._id;
+  const data = await response.json();
+  currentUserId = data.data._id;
 
-    document.getElementById("myName").innerHTML = data.data.fullName;
-    document.getElementById("myAvatar").src = data.data.avatar;
+  document.getElementById("myName").innerHTML = data.data.fullName;
+  document.getElementById("myAvatar").src = data.data.avatar;
 }
 
-async function loadUsers(){
-    const userSearch = document.getElementById("userSearch").value.trim();
+async function loadUsers() {
+  const userSearch = document.getElementById("userSearch").value.trim();
 
-    let url = `${Base_URL}/user/search`;
+  let url = `${Base_URL}/user/search`;
 
-    if(userSearch){
-        url = `${Base_URL}/user/search?query=${encodeURIComponent(userSearch)}`;
-    }
+  if (userSearch) {
+    url = `${Base_URL}/user/search?query=${encodeURIComponent(userSearch)}`;
+  }
 
-    const response = await fetch(url, {
-        method: "GET",
-        credentials: "include"
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    console.log("failed to fetch users");
+    return;
+  }
+
+  const data = await response.json();
+  const users = data.data.data;
+
+  const usersList = document.getElementById("usersList");
+  usersList.innerHTML = "";
+
+  if (!users || users.length === 0) {
+    usersList.innerHTML = "<p>No user found</p>";
+    return;
+  }
+
+  users.forEach((user) => {
+    const userItem = document.createElement("div");
+    userItem.classList.add("user-item");
+
+    userItem.innerHTML = `<img src="${user.avatar}">
+        <span>${user.fullName}</span>`;
+
+    userItem.addEventListener("click", () => {
+      openChat(user);
     });
 
-    if(!response.ok){
-        console.log("failed to fetch users");
-        return;
-    }
-
-    const data = await response.json();  
-    const users = data.data.data;
-
-    const usersList = document.getElementById("usersList");
-    usersList.innerHTML = "";
-
-    if(!users || users.length === 0){
-        usersList.innerHTML = "<p>No user found</p>";
-        return;
-    }
-
-    users.forEach(user => {
-        const userItem = document.createElement("div");
-        userItem.classList.add("user-item");
-
-        userItem.innerHTML = `<img src="${user.avatar}">
-        <span>${user.fullName}</span>`
-
-        userItem.addEventListener("click", () => {
-            openChat(user);
-        })
-
-        usersList.appendChild(userItem);
-    });
+    usersList.appendChild(userItem);
+  });
 }
 
 async function openChat(user) {
-   const otherUserId = user._id;
+  const otherUserId = user._id;
 
-   const roomId = [currentUserId, otherUserId]
-   .sort()
-   .join("_")
+  const roomId = [currentUserId, otherUserId].sort().join("_");
 
-   socket.emit("join-room", {
+  socket.emit("join-room", {
     roomId,
-    otherUserId
-   });
+    otherUserId,
+  });
 
-   try {
-    const response =  await fetch(`${Base_URL}/chat/accessChat`, {
-        method: "POST",
-        headers: {
-            "content-type": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify({userId: otherUserId})
-    })
-    
-    const data = response.json();
-    
-   } catch (err) {
+  try {
+    const response = await fetch(`${Base_URL}/chat/accessChat`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ userId: otherUserId }),
+    });
+
+    const data = await response.json();
+    const chat = data.chat;
+    activateChatId = chat._id
+  } catch (err) {
     console.log("Failed to store chats.", err.message);
-   }
-};
-
-async function fetchChat(){
-   try {
-     const response = await fetch(`${Base_URL}/chat/fetchchat`, {
-         method: "GET",
-         credentials: "include"
-     });
- 
-     if(!response.ok){
-         console.log("Failed to fetch chats.");
-         return;
-     }
- 
-     const data = response.json();
-     const chats = data.data;
-     renderChats(chats);
-
-   } catch (err) {
-    console.log("Error loading chats: ", err.message);
-   }
+  }
 }
 
-function setUpSocketsEvent() {
-    const input = document.getElementById("msgInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const messages = document.getElementById("messages");
-
-    socket = io(`${Base_URL}`, {
-       withCredentials: true
+async function fetchChat() {
+  try {
+    const response = await fetch(`${Base_URL}/chat/fetchchat`, {
+      method: "GET",
+      credentials: "include",
     });
 
-    socket.on("connect_error", (err) => {
-        console.log("Socket connection failed..", err.message);
-    })
-
-    socket.on("chat-header", (data) => {
-        
-        document.getElementById("chatUserName").textContent = data.name;
-        document.getElementById("chatAvatar").src = data.avatar;
-    });
-
-    function addMessage(content, isOwn = false) {
-        const messageDiv = document.createElement("div");
-        messageDiv.classList.add("message");
-        messageDiv.classList.add(isOwn ? "right" : "left");
-        messageDiv.textContent = content;
-
-        messages.appendChild(messageDiv);
-        messages.scrollTop = messages.scrollHeight;
+    if (!response.ok) {
+      console.log("Failed to fetch chats.");
+      return;
     }
 
-    async function sendMessage() {
-        if (!input.value.trim()) return;
+    const data = response.json();
+    const chats = data.data;
+    renderChats(chats);
+  } catch (err) {
+    console.log("Error loading chats: ", err.message);
+  }
+}
 
-        socket.emit("message", {
-            roomId: roomId,
-            message: input.value
+async function setUpSocketsEvent() {
+  const input = document.getElementById("msgInput");
+  const sendBtn = document.getElementById("sendBtn");
+
+  socket = io(`${Base_URL}`, {
+    withCredentials: true,
+  });
+
+  socket.on("connect_error", (err) => {
+    console.log("Socket connection failed..", err.message);
+  });
+
+  socket.on("chat-header", (data) => {
+    document.getElementById("chatUserName").textContent = data.name;
+    document.getElementById("chatAvatar").src = data.avatar;
+  });
+
+  async function sendMessage() {
+    if (!input.value.trim()) return;
+
+    socket.emit("message", {
+      roomId: activateChatId,
+      message: input.value,
+    });
+    
+    await messageHandler(input.value);
+
+    input.value = "";
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      sendMessage();
+    }
+  });
+
+  socket.on("message", (data) => {
+    const isOwn = data.sender === currentUserId;
+    addMessage(data.message, isOwn);
+  });
+}
+
+async function messageHandler(message) {
+    try {
+        const response = await fetch(`${Base_URL}/message/send`, {
+            method: "POST",
+            headers: {
+                "content-type": "application/json"
+            },
+            credentials: "include",
+            body: JSON.stringify({
+                chatId: activateChatId,
+                content: message
+            })
         });
 
-        input.value = "";
-    }
-
-    sendBtn.addEventListener("click", sendMessage);
-
-    input.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-            sendMessage();
+        if(!response.ok){
+            console.log("Failed to store messages.");
+            return;
         }
-    });
 
-    socket.on("message", (data) => {
-        const isOwn = data.sender === currentUserId;
-        addMessage(data.message, isOwn);
-    });
-};
-
-function renderChats(chats){
-    const usersList = document.getElementById("usersList");
-    usersList.innerHTML = "";
-
-    if(!chats || !chats.length == 0){
-        usersList.innerHTML = "<p>You don't even start chatting.</p>";
-        return;
+    } catch (err) {
+        console.log("Error to store messages.", err.message);
     }
+}
 
-    chats.forEach (chat => {
-        const otherUser = chat.users.find(
-            user => user._id != currentUserId
-        );
+function addMessage(content, isOwn = false) {
+  const messages = document.getElementById("messages");
 
-        const chatItem = document.createElement("div");
-        chatItem.classList.add("user-item");
+  const messageDiv = document.createElement("div");
+  messageDiv.classList.add("message");
+  messageDiv.classList.add(isOwn ? "right" : "left");
+  messageDiv.textContent = content;
 
-        chatItem.innerHTML = `
+  messages.appendChild(messageDiv);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function renderChats(chats) {
+  const usersList = document.getElementById("usersList");
+  usersList.innerHTML = "";
+
+  if (!chats || !chats.length == 0) {
+    usersList.innerHTML = "<p>You don't even start chatting.</p>";
+    return;
+  }
+
+  chats.forEach((chat) => {
+    const otherUser = chat.users.find((user) => user._id != currentUserId);
+
+    const chatItem = document.createElement("div");
+    chatItem.classList.add("user-item");
+
+    chatItem.innerHTML = `
          <img src="${otherUser.avatar}" />
          <div>
             <strong>${otherUser.fullName}</strong>
@@ -214,33 +236,50 @@ function renderChats(chats){
          </div>
         `;
 
-        chatItem.addEventListener("click", () => {
-            openExistingChat(chat);
-        });
-
-        usersList.appendChild(chatItem);
-    })
-};
-
-async function openExistingChat(chat){
-    const otherUser = chat.users.find(
-        user => user._id != currentUserId
-    );
-
-    document.getElementById("chatAvatar").src = otherUser.avatar;
-    document.getElementById("chatUserName").textContent = otherUser.fullName;
-
-    activateChatId = chat._id;
-
-    socket.emit("join-room", {
-        roomId: activateChatId
+    chatItem.addEventListener("click", () => {
+      openExistingChat(chat);
     });
 
-    document.getElementById("messages").innerHTML = "";
+    usersList.appendChild(chatItem);
+  });
+}
 
-    await loadMessages(activateChatId);
-};
+async function openExistingChat(chat) {
+  const otherUser = chat.users.find((user) => user._id != currentUserId);
 
-async function loadMessages(chatId){
-    console.log("hi");
+  document.getElementById("chatAvatar").src = otherUser.avatar;
+  document.getElementById("chatUserName").textContent = otherUser.fullName;
+
+  activateChatId = chat._id;
+
+  socket.emit("join-room", {
+    roomId: activateChatId,
+  });
+
+  document.getElementById("messages").innerHTML = "";
+
+  await loadMessages(activateChatId);
+}
+
+async function loadMessages(chatId) {
+  try {
+    const response = await fetch(`${Base_URL}/message/get/${chatId}`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      console.log("Failed to load messages");
+      return;
+    }
+    const data = response.json();
+    const messages = data.data;
+
+    messages.forEach((msg) => {
+      const isOwn = msg.sender._id === currentUserId;
+      addMessage(msg.message, isOwn);
+    });
+  } catch (err) {
+    console.log("Error to load messages.", err.message);
+  }
 }

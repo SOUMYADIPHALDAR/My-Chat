@@ -41,7 +41,7 @@ const accessChat = asyncHandler(async (req, res) => {
     "users",
     "fullName userName email avatar"
   );
-
+  
   return res.status(201).json({
     message: "New chat created",
     chat: finalChat,
