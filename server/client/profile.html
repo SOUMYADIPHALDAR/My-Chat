@@ -1,99 +1,113 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Profile</title>
-  <link rel="stylesheet" href="profile.css" />
-</head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Profile</title>
+    <link rel="stylesheet" href="profile.css" />
+  </head>
 
-<body>
-  <div class="container">
+  <body>
+    <div class="container">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div>
+          <h2>My Chat</h2>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div>
-        <h2>My Chat</h2>
-
-        <div class="sidebar-nav">
-          <button id="goDashboardBtn">🏠 Dashboard</button>
-        </div>
-      </div>
-
-      <div class="sidebar-bottom">
-        <button id="logoutBtn">🚪 Logout</button>
-      </div>
-    </div>
-
-    <!-- Profile Section -->
-    <div class="profile-section">
-      <div class="profile-card">
-
-        <!-- Header -->
-        <div class="profile-header">
-          <h2>My Profile</h2>
-          <button id="editProfileBtn" class="edit-btn">✏</button>
-        </div>
-
-        <!-- Avatar -->
-        <div class="profile-avatar">
-          <div class="avatar-wrapper">
-            <img id="profileAvatar" src="" alt="Avatar" />
-            <button id="editAvatarBtn" class="avatar-edit-btn">✏</button>
+          <div class="sidebar-nav">
+            <button id="goDashboardBtn">🏠 Dashboard</button>
           </div>
         </div>
 
-        <!-- Profile Info -->
-        <div class="profile-display">
-          <p><strong>Full Name:</strong> <span id="displayFullName"></span></p>
-          <p><strong>Username:</strong> <span id="displayUserName"></span></p>
-          <p><strong>Email:</strong> <span id="displayEmail"></span></p>
+        <div class="sidebar-bottom">
+          <button id="logoutBtn">🚪 Logout</button>
         </div>
+      </div>
 
-        <!-- Update Password Button -->
-        <div style="margin-top: 20px; text-align:center;">
-          <button id="updatePasswordBtn" class="edit-btn">
-            🔐 Update Password
-          </button>
+      <!-- Profile Section -->
+      <div class="profile-section">
+        <div class="profile-card">
+          <!-- Header -->
+          <div class="profile-header">
+            <h2>My Profile</h2>
+            <button id="editProfileBtn" class="edit-btn">✏</button>
+          </div>
+
+          <!-- Avatar -->
+          <div class="profile-avatar">
+            <div class="avatar-wrapper">
+              <img id="profileAvatar" src="" alt="Avatar" />
+              <button id="editAvatarBtn" class="avatar-edit-btn">✏</button>
+
+              <input
+                type="file"
+                id="avatarInput"
+                accept="image/*"
+                style="display: none"
+              />
+            </div>
+          </div>
+
+          <!-- Profile Info -->
+          <div class="profile-display">
+            <p>
+              <strong>Full Name:</strong> <span id="displayFullName"></span>
+            </p>
+            <p><strong>Username:</strong> <span id="displayUserName"></span></p>
+            <p><strong>Email:</strong> <span id="displayEmail"></span></p>
+          </div>
+
+          <!-- Update Password Button -->
+          <div style="margin-top: 20px; text-align: center">
+            <button id="updatePasswordBtn" class="edit-btn">
+              🔐 Update Password
+            </button>
+          </div>
         </div>
-
       </div>
     </div>
-  </div>
 
-  <!-- ================= PROFILE EDIT MODAL ================= -->
+    <!-- ================= PROFILE EDIT MODAL ================= -->
 
-  <div id="editModal" class="modal">
-    <div class="modal-content">
-      <h3>Update Profile</h3>
+    <div id="editModal" class="modal">
+      <div class="modal-content">
+        <h3>Update Profile</h3>
 
-      <input type="text" id="editFullName" placeholder="Full Name" />
-      <input type="email" id="editEmail" placeholder="Email" />
+        <input type="text" id="editFullName" placeholder="Full Name" />
+        <input type="email" id="editEmail" placeholder="Email" />
 
-      <div class="modal-actions">
-        <button id="cancelEdit">Cancel</button>
-        <button id="saveEdit">Save</button>
+        <div class="modal-actions">
+          <button id="cancelEdit">Cancel</button>
+          <button id="saveEdit">Save</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ================= PASSWORD MODAL ================= -->
+    <!-- ================= PASSWORD MODAL ================= -->
 
-  <div id="passwordModal" class="modal">
-    <div class="modal-content">
-      <h3>Update Password</h3>
+    <div id="passwordModal" class="modal">
+      <div class="modal-content">
+        <h3>Update Password</h3>
 
-      <input type="password" id="currentPassword" placeholder="Current Password" />
-      <input type="password" id="newPassword" placeholder="New Password" />
-      <input type="password" id="confirmPassword" placeholder="Confirm Password" />
+        <input
+          type="password"
+          id="currentPassword"
+          placeholder="Current Password"
+        />
+        <input type="password" id="newPassword" placeholder="New Password" />
+        <input
+          type="password"
+          id="confirmPassword"
+          placeholder="Confirm Password"
+        />
 
-      <div class="modal-actions">
-        <button id="cancelPasswordEdit">Cancel</button>
-        <button id="savePasswordEdit">Update</button>
+        <div class="modal-actions">
+          <button id="cancelPasswordEdit">Cancel</button>
+          <button id="savePasswordEdit">Update</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <script src="js/profile.js"></script>
-</body>
+    <script src="js/profile.js"></script>
+  </body>
 </html>

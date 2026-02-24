@@ -40,7 +40,9 @@ function setUpEventListeners(){
     document.getElementById("savePasswordEdit").addEventListener("click", () => {
         updatePassword();
         closeEditProfile();
-    })
+    });
+    document.getElementById("editAvatarBtn").addEventListener("click", tiggerFileInput);
+    document.getElementById("avatarInput").addEventListener("click", handleUpdateAvatar);
 }
 
 async function handleLogOut() {
@@ -76,6 +78,10 @@ function editProfile(){
 
 };
 
+function tiggerFileInput(){
+    document.getElementById("avatarInput").click();
+}
+
 function closeEditProfile(){
     document.getElementById("passwordModal").classList.remove("active");
 }
@@ -107,9 +113,6 @@ async function updatePassword(){
             console.log("Failed to change password..");
             return;
         }
-
-        const data = await response.json();
-        console.log(data);
 
     } catch (err) {
         console.log("Error to change password.", err.message);
@@ -145,5 +148,33 @@ async function updateProfile(){
         
     } catch (err) {
         console.log("Error to edit profile", err.message);
+    }
+};
+
+async function handleUpdateAvatar(event){
+    try {
+        const file = event.target.files[0];
+    
+        if(!file) return;
+    
+        const previewUrl = URL.createObjectURL(file);
+        document.getElementById("profileAvatar").src = previewUrl;
+
+        const formData = new FormData();
+        formData.append("avatar", file);
+
+        const response = await fetch(`${Base_URL}/user/change-avatar`, {
+            method: "PUT",
+            credentials: "include",
+            body: formData
+        });
+
+        if(!response.ok){
+            console.log("Failed to change avatar..");
+            return;
+        }
+
+    } catch (err) {
+        console.log("Error to change avatar.", err.message);
     }
 }
