@@ -35,7 +35,12 @@ function setUpEventListeners(){
     document.getElementById("logoutBtn").addEventListener("click", handleLogOut);
 
     document.getElementById("editProfileBtn").addEventListener("click", editProfile);
-    document.getElementById("updatePasswordBtn").addEventListener("click", updatePasswordModal)
+    document.getElementById("updatePasswordBtn").addEventListener("click", updatePasswordModal);
+    document.getElementById("cancelPasswordEdit").addEventListener("click", closeEditProfile);
+    document.getElementById("savePasswordEdit").addEventListener("click", () => {
+        updatePassword();
+        closeEditProfile();
+    })
 }
 
 async function handleLogOut() {
@@ -69,10 +74,46 @@ function editProfile(){
         modal.classList.remove("active");
     });
 
+};
+
+function closeEditProfile(){
+    document.getElementById("passwordModal").classList.remove("active");
 }
 
 function updatePasswordModal(){
-    
+    document.getElementById("passwordModal").classList.add("active");
+}
+
+async function updatePassword(){
+    try {
+        const currentPassword = document.getElementById("currentPassword").value.trim();
+        const newPassword = document.getElementById("newPassword").value.trim();
+        const confirmPassword = document.getElementById("confirmPassword").value.trim();
+
+        const response = await fetch(`${Base_URL}/user/change-password`, {
+            method: "PUT",
+            credentials: "include",
+            headers: {
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({
+                oldPassword: currentPassword,
+                newPassword,
+                confirmPassword
+            })
+        });
+
+        if(!response.ok){
+            console.log("Failed to change password..");
+            return;
+        }
+
+        const data = await response.json();
+        console.log(data);
+
+    } catch (err) {
+        console.log("Error to change password.", err.message);
+    }
 }
 
 async function updateProfile(){
