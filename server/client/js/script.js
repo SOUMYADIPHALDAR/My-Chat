@@ -1,4 +1,3 @@
-
 const Base_URL = "http://localhost:5000";
 
 document.addEventListener("DOMContentLoaded", init);
@@ -21,14 +20,18 @@ function setUpEventListeners() {
   document.getElementById("myProfile").addEventListener("click", () => {
     window.location.href = "profile.html";
   });
-  document.getElementById("createGroupBtn").addEventListener("click", openGroups);
-  document.getElementById("closeGroupModal").addEventListener("click", closeGroups);
+  document
+    .getElementById("createGroupBtn")
+    .addEventListener("click", openGroups);
+  document
+    .getElementById("closeGroupModal")
+    .addEventListener("click", closeGroups);
 
   const groupSearch = document.getElementById("groupSearch");
-  if(groupSearch){
+  if (groupSearch) {
     groupSearch.addEventListener("keypress", (e) => {
-    if(e.key === "Enter") loadGroupUsers();
-  })
+      if (e.key === "Enter") loadGroupUsers();
+    });
   }
 }
 
@@ -50,23 +53,22 @@ async function loadMyProfile() {
   document.getElementById("myAvatar").src = data.data.avatar;
 }
 
-async function loadGroupUsers(){
-  
+async function loadGroupUsers() {
   try {
     const userSearch = document.getElementById("groupSearch").value.trim();
-  
+
     let url = `${Base_URL}/user/search`;
-  
-    if(userSearch){
+
+    if (userSearch) {
       url = `${Base_URL}/user/search?query=${encodeURIComponent(userSearch)}`;
     }
-  
+
     const response = await fetch(url, {
       method: "GET",
-      credentials: "include"
+      credentials: "include",
     });
 
-    if(!response.ok){
+    if (!response.ok) {
       console.log("Failed to load group users.");
       return;
     }
@@ -77,49 +79,48 @@ async function loadGroupUsers(){
     const selectedUsers = document.getElementById("selectedMembers");
     selectedUsers.innerHTML = "";
 
-    if(!users || users.length === 0){
+    if (!users || users.length === 0) {
       selectedUsers.innerHTML = "<p>No user found</p>";
       return;
     }
 
     users.forEach((user) => {
-    const userItem = document.createElement("div");
-    userItem.classList.add("user-item");
+      const userItem = document.createElement("div");
+      userItem.classList.add("user-item");
 
-    userItem.innerHTML = `<img src="${user.avatar}">
+      userItem.innerHTML = `<img src="${user.avatar}">
         <span>${user.fullName}</span>`;
 
-    userItem.addEventListener("click", () => {
-      addMemberToGroup(user);
+      userItem.addEventListener("click", () => {
+        addMemberToGroup(user);
+      });
+
+      selectedUsers.appendChild(userItem);
     });
-
-    selectedUsers.appendChild(userItem);
-  });
-
   } catch (err) {
     console.log("Error to load group users.", err.message);
   }
 }
 
-function addMemberToGroup(user){
-  if(user._id === currentUserId) return;
+function addMemberToGroup(user) {
+  if (user._id === currentUserId) return;
 
   const addedMember = selectedGroupMembers.some(
-    member => member._id === user._id
+    (member) => member._id === user._id,
   );
 
-  if(addedMember) return;
+  if (addedMember) return;
 
   selectedGroupMembers.push(user);
 
   renderSelectedUser();
 }
 
-function renderSelectedUser(){
+function renderSelectedUser() {
   const container = document.getElementById("selectedMembers");
   container.innerHTML = "";
 
-  selectedGroupMembers.forEach(user => {
+  selectedGroupMembers.forEach((user) => {
     const tag = document.createElement("div");
     tag.classList.add("member-tag");
 
@@ -127,18 +128,18 @@ function renderSelectedUser(){
       ${user.fullName}
       <span data-id="${user._id}">✕</span>
     `;
-  });
 
-  tag.querySelector("span").addEventListener("click", () => {
-    removeMemberFromGroup(user._id);
-  });
+    tag.querySelector("span").addEventListener("click", () => {
+      removeMemberFromGroup(user._id);
+    });
 
-  container.appendChild(tag);
+    container.appendChild(tag);
+  });
 }
 
-function removeMemberFromGroup(userId){
+function removeMemberFromGroup(userId) {
   selectedGroupMembers = selectedGroupMembers.filter(
-    user => user._id != userId
+    (user) => user._id != userId,
   );
   renderSelectedUser();
 }
@@ -186,12 +187,12 @@ async function loadUsers() {
 
     usersList.appendChild(userItem);
   });
-};
+}
 
-function openGroups(){
+function openGroups() {
   const modal = document.getElementById("createGroupModal");
-  
-  if(!modal){
+
+  if (!modal) {
     console.log("modal is not working");
     return;
   }
@@ -199,7 +200,7 @@ function openGroups(){
   modal.classList.add("active");
 }
 
-function closeGroups(){
+function closeGroups() {
   const modal = document.getElementById("createGroupModal");
   modal.classList.remove("active");
 }
@@ -226,7 +227,7 @@ async function openChat(user) {
 
     const data = await response.json();
     const chat = data.chat;
-    activateChatId = chat._id
+    activateChatId = chat._id;
   } catch (err) {
     console.log("Failed to store chats.", err.message);
   }
@@ -276,7 +277,7 @@ async function setUpSocketsEvent() {
       roomId: activateChatId,
       message: input.value,
     });
-    
+
     await messageHandler(input.value);
 
     input.value = "";
@@ -297,27 +298,26 @@ async function setUpSocketsEvent() {
 }
 
 async function messageHandler(message) {
-    try {
-        const response = await fetch(`${Base_URL}/message/send`, {
-            method: "POST",
-            headers: {
-                "content-type": "application/json"
-            },
-            credentials: "include",
-            body: JSON.stringify({
-                chatId: activateChatId,
-                content: message
-            })
-        });
+  try {
+    const response = await fetch(`${Base_URL}/message/send`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        chatId: activateChatId,
+        content: message,
+      }),
+    });
 
-        if(!response.ok){
-            console.log("Failed to store messages.");
-            return;
-        }
-
-    } catch (err) {
-        console.log("Error to store messages.", err.message);
+    if (!response.ok) {
+      console.log("Failed to store messages.");
+      return;
     }
+  } catch (err) {
+    console.log("Error to store messages.", err.message);
+  }
 }
 
 function addMessage(content, isOwn = false) {
@@ -335,14 +335,13 @@ function addMessage(content, isOwn = false) {
 function renderChats(chats) {
   const usersList = document.getElementById("usersList");
   usersList.innerHTML = "";
-    
+
   if (!chats || !chats.length === 0) {
     usersList.innerHTML = "<p>You don't even start chatting.</p>";
     return;
   }
 
   chats.forEach((chat) => {
-    
     const otherUser = chat.users.find((user) => user._id != currentUserId);
 
     const chatItem = document.createElement("div");
@@ -359,18 +358,17 @@ function renderChats(chats) {
     chatItem.addEventListener("click", () => {
       openExistingChat(chat);
     });
-    
+
     usersList.appendChild(chatItem);
   });
 }
 
 async function openExistingChat(chat) {
-   
   const otherUser = chat.users.find((user) => user._id != currentUserId);
 
   document.getElementById("chatAvatar").src = otherUser.avatar;
   document.getElementById("chatUserName").textContent = otherUser.fullName;
-    
+
   activateChatId = chat._id;
 
   socket.emit("join-room", {
@@ -378,13 +376,12 @@ async function openExistingChat(chat) {
   });
 
   document.getElementById("messages").innerHTML = "";
-  
+
   await loadMessages(activateChatId);
 }
 
 async function loadMessages(chatId) {
   try {
-   
     const response = await fetch(`${Base_URL}/message/get/${chatId}`, {
       method: "GET",
       credentials: "include",
