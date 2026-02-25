@@ -6,10 +6,11 @@ document.addEventListener("DOMContentLoaded", init);
 let socket;
 let currentUserId = null;
 let activateChatId = null;
-function init() {
+let selectedGroupMembers = [];
+async function init() {
   setUpEventListeners();
-  loadMyProfile();
-  fetchChat();
+  await loadMyProfile();
+  await fetchChat();
   setUpSocketsEvent();
 }
 
@@ -20,6 +21,15 @@ function setUpEventListeners() {
   document.getElementById("myProfile").addEventListener("click", () => {
     window.location.href = "profile.html";
   });
+  document.getElementById("createGroupBtn").addEventListener("click", openGroups);
+  document.getElementById("closeGroupModal").addEventListener("click", closeGroups);
+
+  const groupSearch = document.getElementById("groupSearch");
+  if(groupSearch){
+    groupSearch.addEventListener("keypress", (e) => {
+    if(e.key === "Enter") loadGroupUsers();
+  })
+  }
 }
 
 async function loadMyProfile() {
@@ -38,6 +48,99 @@ async function loadMyProfile() {
 
   document.getElementById("myName").innerHTML = data.data.fullName;
   document.getElementById("myAvatar").src = data.data.avatar;
+}
+
+async function loadGroupUsers(){
+  
+  try {
+    const userSearch = document.getElementById("groupSearch").value.trim();
+  
+    let url = `${Base_URL}/user/search`;
+  
+    if(userSearch){
+      url = `${Base_URL}/user/search?query=${encodeURIComponent(userSearch)}`;
+    }
+  
+    const response = await fetch(url, {
+      method: "GET",
+      credentials: "include"
+    });
+
+    if(!response.ok){
+      console.log("Failed to load group users.");
+      return;
+    }
+
+    const data = await response.json();
+    const users = data.data.data;
+
+    const selectedUsers = document.getElementById("selectedMembers");
+    selectedUsers.innerHTML = "";
+
+    if(!users || users.length === 0){
+      selectedUsers.innerHTML = "<p>No user found</p>";
+      return;
+    }
+
+    users.forEach((user) => {
+    const userItem = document.createElement("div");
+    userItem.classList.add("user-item");
+
+    userItem.innerHTML = `<img src="${user.avatar}">
+        <span>${user.fullName}</span>`;
+
+    userItem.addEventListener("click", () => {
+      addMemberToGroup(user);
+    });
+
+    selectedUsers.appendChild(userItem);
+  });
+
+  } catch (err) {
+    console.log("Error to load group users.", err.message);
+  }
+}
+
+function addMemberToGroup(user){
+  if(user._id === currentUserId) return;
+
+  const addedMember = selectedGroupMembers.some(
+    member => member._id === user._id
+  );
+
+  if(addedMember) return;
+
+  selectedGroupMembers.push(user);
+
+  renderSelectedUser();
+}
+
+function renderSelectedUser(){
+  const container = document.getElementById("selectedMembers");
+  container.innerHTML = "";
+
+  selectedGroupMembers.forEach(user => {
+    const tag = document.createElement("div");
+    tag.classList.add("member-tag");
+
+    tag.innerHTML = `
+      ${user.fullName}
+      <span data-id="${user._id}">✕</span>
+    `;
+  });
+
+  tag.querySelector("span").addEventListener("click", () => {
+    removeMemberFromGroup(user._id);
+  });
+
+  container.appendChild(tag);
+}
+
+function removeMemberFromGroup(userId){
+  selectedGroupMembers = selectedGroupMembers.filter(
+    user => user._id != userId
+  );
+  renderSelectedUser();
 }
 
 async function loadUsers() {
@@ -83,6 +186,22 @@ async function loadUsers() {
 
     usersList.appendChild(userItem);
   });
+};
+
+function openGroups(){
+  const modal = document.getElementById("createGroupModal");
+  
+  if(!modal){
+    console.log("modal is not working");
+    return;
+  }
+
+  modal.classList.add("active");
+}
+
+function closeGroups(){
+  const modal = document.getElementById("createGroupModal");
+  modal.classList.remove("active");
 }
 
 async function openChat(user) {

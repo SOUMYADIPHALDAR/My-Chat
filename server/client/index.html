@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -10,14 +10,18 @@
   </head>
 
   <body>
-   
-    
     <div class="container">
       <!-- Sidebar -->
       <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
           <h2>Chats</h2>
-          <button id="createGroupBtn" class="create-group-btn" title="Create Group">+ Group</button>
+          <button
+            id="createGroupBtn"
+            class="create-group-btn"
+            title="Create Group"
+          >
+            + Group
+          </button>
         </div>
         <input id="userSearch" type="text" placeholder="Search users..." />
         <div id="usersList"></div>
@@ -40,8 +44,10 @@
             <span id="chatUserName">Select a chat</span>
             <span id="chatUserCount" class="chat-count"></span>
           </div>
-          <div id="groupActions" class="group-actions" style="display: none;">
-            <button id="manageGroupBtn" class="manage-btn" title="Manage Group">⚙️</button>
+          <div id="groupActions" class="group-actions" style="display: none">
+            <button id="manageGroupBtn" class="manage-btn" title="Manage Group">
+              ⚙️
+            </button>
           </div>
         </div>
 
@@ -62,19 +68,32 @@
     <!-- Create Group Modal -->
     <div id="createGroupModal" class="modal">
       <div class="modal-content">
-        <span class="close-modal">&times;</span>
+        <span class="close-btn" id="closeGroupModal">✕</span>
+
         <h2>Create Group Chat</h2>
-        <input type="text" id="groupNameInput" placeholder="Group Name" />
-        <div class="user-selection">
-          <h3>Select Members (at least 2)</h3>
-          <input type="text" id="groupUserSearch" placeholder="Search users to add..." />
-          <div id="availableUsers" class="available-users"></div>
-          <div id="selectedUsers" class="selected-users">
-            <h4>Selected Members:</h4>
-            <div id="selectedUsersList"></div>
-          </div>
+
+        <div>
+          <label>Group Name</label>
+          <input type="text" id="groupName" placeholder="Enter group name" />
         </div>
-        <button id="createGroupSubmitBtn" class="submit-btn">Create Group</button>
+
+        <div>
+          <label>Select Members (at least 2)</label>
+          <input
+            type="text"
+            id="groupSearch"
+            placeholder="Search users to add..."
+          />
+        </div>
+
+        <div>
+          <label>Selected Members:</label>
+          <div class="selected-members" id="selectedMembers"></div>
+        </div>
+
+        <button class="create-group-submit" id="createGroupSubmit">
+          Create Group
+        </button>
       </div>
     </div>
 
