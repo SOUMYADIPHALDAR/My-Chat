@@ -33,6 +33,8 @@ function setUpEventListeners() {
       if (e.key === "Enter") loadGroupUsers();
     });
   }
+
+  document.getElementById("createGroupSubmit").addEventListener("click", createGroup);
 }
 
 async function loadMyProfile() {
@@ -203,6 +205,38 @@ function openGroups() {
 function closeGroups() {
   const modal = document.getElementById("createGroupModal");
   modal.classList.remove("active");
+}
+
+async function createGroup(){
+  try {
+    const groupName = document.getElementById("groupName");
+
+    if(!groupName){
+      console.log("Group name is required..");
+      return;
+    }
+
+    if(selectedGroupMembers.length < 2){
+      console.log("Group member should be more than 2");
+      return;
+    }
+
+    const members = selectedGroupMembers.map(user => user._id);
+
+    const response = await fetch(`${Base_URL}/user/accessChat`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: {
+
+      }
+    })
+
+  } catch (err) {
+    console.log("Error to create groups.", err.message);
+  }
 }
 
 async function openChat(user) {

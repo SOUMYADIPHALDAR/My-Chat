@@ -7,45 +7,67 @@ const Message = require("../models/message.model.js");
 const { userInChat, isGroupAdmin } = require("../utils/chatPermission.js");
 
 const accessChat = asyncHandler(async (req, res) => {
-  const { userId } = req.body;
+  const { chatName, isGroupChat, userId, members } = req.body;
   
-  if (!userId) {
-    return res.status(400).json({
-      message: "userId is required",
+  const currentUserId = req.user._id;
+
+  if(!isGroupChat){
+
+    if(!userId){
+      throw new apiError(400, "User id is required..");
+    }
+
+    const existingChat = await Chat.findOne({
+      isGroupChat: false,
+      users: {$all: [userId, currentUserId]}
     });
+
+    if(existingChat){
+      return res.status(200).json(
+        new apiResponse(200, existingChat, "Private chat already exists..")
+      )
+    };
+
+    const newChat = await Chat.create({
+      isGroupChat: false,
+      users: [userId, currentUserId]
+    });
+
+    const finalChat = await Chat.findById(newChat._id)
+    .populate("users", "fullName email userName avatar")
+
+    return res.status(201).json(
+      new apiResponse(201, finalChat, "Private Chat created successfully..")
+    );
   }
 
-  const myId = req.user._id;
+  if(isGroupChat){
 
-  // Check if private chat already exists
-  let existingChat = await Chat.findOne({
-    isGroupChat: false,
-    users: { $all: [myId, userId] },
-  }).populate("users", "fullName userName email avatar");
+    if(!chatName){
+      throw apiError(400, "Chat name is required..");
+    }
 
-  if (existingChat) {
-    return res.status(200).json({
-      message: "Chat already exists",
-      chat: existingChat,
+    if(!members || members.length < 0){
+      throw new apiError(400, "Member should be more than 2..");
+    }
+
+    const allMembers = [ ...members, currentUserId ];
+
+    const newGroup = await Chat.create({
+      chatName,
+      isGroupChat: true,
+      users: allMembers,
+      groupAdmin: currentUserId
     });
+
+    const finalGroup = await Chat.findById(newGroup._id)
+    .populate("users", "fullName email userName avatar")
+    .populate("groupAdmin", "fullName email userName avatar")
+
+    return res.status(201).json(
+      new apiResponse(201, finalGroup, "Group chat is created successfully..")
+    )
   }
-
-  // 2️⃣ Create new private chat
-  const newChat = await Chat.create({
-    chatName: "Private Chat",
-    isGroupChat: false,
-    users: [myId, userId],
-  });
-
-  const finalChat = await Chat.findById(newChat._id).populate(
-    "users",
-    "fullName userName email avatar"
-  );
-  
-  return res.status(201).json({
-    message: "New chat created",
-    chat: finalChat,
-  });
 });
 
 const fetchChats = asyncHandler(async (req, res) => {
