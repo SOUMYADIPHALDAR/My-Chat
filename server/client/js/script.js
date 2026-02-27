@@ -184,11 +184,11 @@ async function loadUsers() {
     userItem.innerHTML = `<img src="${user.avatar}">
         <span>${user.fullName}</span>`;
 
-    userItem.addEventListener("click", () => {
-      openChat(user);
-    });
-
     usersList.appendChild(userItem);
+
+    userItem.addEventListener("click", () => {
+    openChat(user);
+  })
   });
 }
 
@@ -284,7 +284,7 @@ async function openChat(user) {
     });
 
     const data = await response.json();
-    const chat = data.chat;
+    const chat = data.data;
     activateChatId = chat._id;
   } catch (err) {
     console.log("Failed to store chats.", err.message);
@@ -434,18 +434,17 @@ function renderChats(chats) {
 }
 
 async function openExistingChat(chat) {
-
-  let chatAvatar = document.getElementById("chatAvatar");
-  let chatUserName = document.getElementById("chatUserName");
+  const chatAvatar = document.getElementById("chatAvatar");
+  const chatUserName = document.getElementById("chatUserName");
 
   if(chat.isGroupChat){
-    chatUserName = chat.chatName;
-    chatAvatar = chat.avatar ||  "../images/profile.png";
+    chatUserName.textContent = chat.chatName;
+    chatAvatar.src = chat.avatar ||  "../images/profile.png";
   } else {
     const otherUser = chat.users.find(user => user._id != currentUserId);
 
-    chatUserName = otherUser.fullName;
-    chatAvatar = otherUser.avatar;
+    chatUserName.textContent = otherUser.fullName;
+    chatAvatar.src = otherUser.avatar;
   }
 
   activateChatId = chat._id;
