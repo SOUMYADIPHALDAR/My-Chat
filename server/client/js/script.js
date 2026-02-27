@@ -34,7 +34,9 @@ function setUpEventListeners() {
     });
   }
 
-  document.getElementById("createGroupSubmit").addEventListener("click", createGroup);
+  document
+    .getElementById("createGroupSubmit")
+    .addEventListener("click", createGroup);
 }
 
 async function loadMyProfile() {
@@ -187,8 +189,8 @@ async function loadUsers() {
     usersList.appendChild(userItem);
 
     userItem.addEventListener("click", () => {
-    openChat(user);
-  })
+      openChat(user);
+    });
   });
 }
 
@@ -208,36 +210,36 @@ function closeGroups() {
   modal.classList.remove("active");
 }
 
-async function createGroup(){
+async function createGroup() {
   try {
     const groupName = document.getElementById("groupName").value.trim();
 
-    if(!groupName){
+    if (!groupName) {
       console.log("Group name is required..");
       return;
     }
 
-    if(selectedGroupMembers.length < 2){
+    if (selectedGroupMembers.length < 2) {
       console.log("Group member should be more than 2");
       return;
     }
 
-    const members = selectedGroupMembers.map(user => user._id);
+    const members = selectedGroupMembers.map((user) => user._id);
 
     const response = await fetch(`${Base_URL}/chat/accessChat`, {
       method: "POST",
       credentials: "include",
       headers: {
-        "content-type": "application/json"
+        "content-type": "application/json",
       },
       body: JSON.stringify({
         chatName: groupName,
         members,
-        isGroupChat: true
-      })
+        isGroupChat: true,
+      }),
     });
 
-    if(!response.ok){
+    if (!response.ok) {
       console.log("Failed to create group.");
       return;
     }
@@ -247,14 +249,13 @@ async function createGroup(){
     console.log(group);
 
     socket.emit("join-room", {
-      roomId: group._id
-    })
+      roomId: group._id,
+    });
 
     await fetchChat();
     closeGroups();
     selectedGroupMembers = [];
     renderSelectedUser();
-
   } catch (err) {
     console.log("Error to create groups.", err.message);
   }
@@ -279,8 +280,8 @@ async function openChat(user) {
       credentials: "include",
       body: JSON.stringify({
         userId: otherUserId,
-        isGroupChat: false 
-      })
+        isGroupChat: false,
+      }),
     });
 
     const data = await response.json();
@@ -400,14 +401,13 @@ function renderChats(chats) {
   }
 
   chats.forEach((chat) => {
-
     const chatItem = document.createElement("div");
     chatItem.classList.add("user-item");
 
     let displayChatName;
     let displayAvatar;
 
-    if(chat.isGroupChat){
+    if (chat.isGroupChat) {
       displayChatName = chat.chatName;
       displayAvatar = chat.avatar || "../images/profile.png";
     } else {
@@ -423,7 +423,32 @@ function renderChats(chats) {
             <strong>${displayChatName}</strong>
             <p>${chat.latestMessage?.message || ""}</p>
          </div>
+
+        <div class="chat-menu">
+          <button class="dots-btn">⋮</button>
+          <div class="dropdown-menu">
+            <button class="dropdown-item profile-btn">👤 Profile</button>
+            <button class="dropdown-item delete-btn">🗑 Delete</button>
+          </div>
+        </div>
         `;
+
+      const dotBtn = chatItem.querySelector(".dots-btn");
+      const dropdown = chatItem.querySelector(".dropdown-menu");
+
+      dotBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+
+        document.querySelectorAll(".dropdown-menu").forEach(menu => {
+          if(menu !== dropdown) menu.classList.remove("show");
+        });
+
+        dropdown.classList.toggle("show");
+      });
+
+      document.addEventListener("click", () => {
+        dropdown.classList.remove("show");
+      })
 
     chatItem.addEventListener("click", () => {
       openExistingChat(chat);
@@ -437,11 +462,11 @@ async function openExistingChat(chat) {
   const chatAvatar = document.getElementById("chatAvatar");
   const chatUserName = document.getElementById("chatUserName");
 
-  if(chat.isGroupChat){
+  if (chat.isGroupChat) {
     chatUserName.textContent = chat.chatName;
-    chatAvatar.src = chat.avatar ||  "../images/profile.png";
+    chatAvatar.src = chat.avatar || "../images/profile.png";
   } else {
-    const otherUser = chat.users.find(user => user._id != currentUserId);
+    const otherUser = chat.users.find((user) => user._id != currentUserId);
 
     chatUserName.textContent = otherUser.fullName;
     chatAvatar.src = otherUser.avatar;

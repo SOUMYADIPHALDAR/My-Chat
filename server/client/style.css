@@ -452,3 +452,144 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
 }
+
+/* ===============================
+   CHAT ITEM CONTAINER
+================================ */
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #1a1a1a;
+  cursor: pointer;
+  transition: 0.2s ease;
+  position: relative;
+  z-index: 1;   /* important */
+}
+
+.user-item:hover {
+  background: #242424;
+  z-index: 50;
+}
+
+/* ===============================
+   LEFT SECTION (Avatar + Info)
+================================ */
+
+.chat-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-left img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.chat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-info strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+}
+
+.chat-info p {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 2px;
+}
+
+/* ===============================
+   3 DOTS MENU BUTTON
+================================ */
+
+.chat-menu {
+  position: relative;   /* anchor for dropdown */
+}
+
+.dots-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #aaa;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: 0.2s ease;
+}
+
+.dots-btn:hover {
+  background: #2a2a2a;
+  color: white;
+}
+
+/* ===============================
+   DROPDOWN MENU
+================================ */
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background: #222;
+  border-radius: 10px;
+  padding: 6px 0;
+  display: none;
+  flex-direction: column;
+  min-width: 140px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+  z-index: 1000;
+}
+
+.dropdown-menu.show {
+  display: flex;
+}
+
+/* Dropdown Items */
+
+.dropdown-item {
+  background: none;
+  border: none;
+  color: white;
+  padding: 10px 14px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.2s ease;
+  width: 100%;
+}
+
+.dropdown-item:hover {
+  background: #333;
+}
+
+.dropdown-item.delete-btn:hover {
+  color: #ff4d4d;
+}
+
+/* ===============================
+   SMOOTH ANIMATION
+================================ */
+
+@keyframes fadeDropdown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
