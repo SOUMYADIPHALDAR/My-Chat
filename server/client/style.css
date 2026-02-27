@@ -593,3 +593,289 @@ body {
     transform: translateY(0);
   }
 }
+/* =========================
+   PROFILE MODAL IMPROVED
+========================= */
+
+.profile-modal-content {
+  width: 380px;
+  text-align: center;
+  padding: 35px 25px;
+  border-radius: 20px;
+  background: #111;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+}
+
+/* Avatar */
+.profile-modal-body img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #4caf50;
+  margin-bottom: 15px;
+}
+
+/* Full Name (PRIMARY) */
+#profileModalFullName {
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 6px;
+}
+
+/* Username (SECONDARY) */
+#profileModalUsername {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4caf50;
+  margin-bottom: 8px;
+}
+
+/* Email (TERTIARY) */
+#profileModalEmail {
+  font-size: 13px;
+  color: #aaa;
+  background: #1c1c1c;
+  padding: 8px 14px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.profile-modal-content {
+  animation: profilePop 0.2s ease-out;
+}
+
+@keyframes profilePop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =========================
+   MANAGE GROUP MODAL
+========================= */
+
+.manage-group-content {
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.group-members-section h3 {
+  font-size: 15px;
+  margin-bottom: 8px;
+  color: #4caf50;
+}
+
+.group-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+/* =========================
+   GROUP MEMBER ITEM FIX
+========================= */
+
+.group-member-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1f1f1f;
+  padding: 10px 14px;
+  border-radius: 12px;
+  transition: 0.2s;
+  overflow: hidden; /* prevent overflow */
+}
+
+.member-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* VERY IMPORTANT FIX */
+.member-left img {
+  width: 38px;          /* force fixed size */
+  height: 38px;         /* force square */
+  border-radius: 50%;   /* make circle */
+  object-fit: cover;    /* prevent stretching */
+  flex-shrink: 0;       /* prevent shrinking */
+}
+
+/* Add Member Section */
+.add-member-section input {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #1f1f1f;
+  color: white;
+  font-size: 14px;
+}
+
+.add-member-results {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.add-member-item {
+  background: #1a1a1a;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.add-member-item:hover {
+  background: #2a2a2a;
+}
+
+/* =========================
+   GROUP HEADER SECTION
+========================= */
+
+.group-header-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.group-avatar-wrapper {
+  position: relative;
+}
+
+.group-avatar-wrapper img {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #4caf50;
+}
+
+/* Edit Avatar Button */
+
+.edit-avatar-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: #4caf50;
+  color: white;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.edit-avatar-btn:hover {
+  background: #2e7d32;
+}
+
+/* =========================
+   MEMBER ITEM IMPROVED
+========================= */
+
+.group-member-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1f1f1f;
+  padding: 12px 14px;
+  border-radius: 14px;
+  transition: 0.2s ease;
+}
+
+.group-member-item:hover {
+  background: #262626;
+}
+
+.member-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.member-left img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #2e7d32;
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.member-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+/* 👑 Admin Badge */
+
+.admin-badge {
+  font-size: 11px;
+  color: #4caf50;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ❌ Remove Button */
+
+.remove-member-btn {
+  background: #2a2a2a;
+  border: none;
+  color: #ff4d4d;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.remove-member-btn:hover {
+  background: #ff4d4d;
+  color: white;
+}
+
+/* Add Member Button */
+
+.add-member-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.add-member-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
+}

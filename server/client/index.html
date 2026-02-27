@@ -65,6 +65,20 @@
     </div>
     <!-- END container -->
 
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+      <div class="modal-content profile-modal-content">
+        <span class="close-btn" id="closeProfileModal">✕</span>
+
+        <div class="profile-modal-body">
+          <img id="profileModalAvatar" src="" alt="Avatar" />
+          <h2 id="profileModalFullName"></h2>
+          <p id="profileModalUsername"></p>
+          <p id="profileModalEmail"></p>
+        </div>
+      </div>
+    </div>
+
     <!-- Create Group Modal -->
     <div id="createGroupModal" class="modal">
       <div class="modal-content">
@@ -99,10 +113,41 @@
 
     <!-- Manage Group Modal -->
     <div id="manageGroupModal" class="modal">
-      <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h2 id="manageGroupTitle">Manage Group</h2>
-        <div id="manageGroupContent"></div>
+      <div class="modal-content manage-group-content">
+        <span class="close-btn" id="closeManageGroupModal">✕</span>
+
+        <!-- GROUP HEADER -->
+        <div class="group-header-section">
+          <div class="group-avatar-wrapper">
+            <img id="manageGroupAvatar" src="" />
+            <label for="groupAvatarInput" class="edit-avatar-btn">✏️</label>
+            <input type="file" id="groupAvatarInput" accept="image/*" hidden />
+          </div>
+
+          <h2 id="manageGroupTitle"></h2>
+        </div>
+
+        <!-- MEMBERS -->
+        <div class="group-members-section">
+          <h3>Group Members</h3>
+          <div id="groupMembersList" class="group-members-list"></div>
+        </div>
+
+        <!-- ADD MEMBER -->
+        <div class="add-member-section">
+          <button id="openAddMemberBtn" class="add-member-btn">
+            ➕ Add New Member
+          </button>
+
+          <div id="addMemberContainer" style="display: none">
+            <input
+              type="text"
+              id="addMemberSearch"
+              placeholder="Search users to add..."
+            />
+            <div id="addMemberResults"></div>
+          </div>
+        </div>
       </div>
     </div>
 

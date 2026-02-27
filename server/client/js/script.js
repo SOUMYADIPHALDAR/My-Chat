@@ -37,6 +37,28 @@ function setUpEventListeners() {
   document
     .getElementById("createGroupSubmit")
     .addEventListener("click", createGroup);
+
+  document.getElementById("closeProfileModal").addEventListener("click", () => {
+    const modal = document.getElementById("profileModal");
+
+    modal.classList.remove("active");
+  });
+
+  window.addEventListener("click", (e) => {
+    const modal1 = document.getElementById("profileModal");
+    const modal2 = document.getElementById("manageGroupModal");
+
+    if(e.target === modal1){
+      modal1.classList.remove("active");
+    } else if(e.target === modal2){
+      modal2.classList.remove("active");
+    }
+  });
+
+  document.getElementById("closeManageGroupModal").addEventListener("click", () => {
+    const modal = document.getElementById("manageGroupModal");
+    modal.classList.remove("active");
+  })
 }
 
 async function loadMyProfile() {
@@ -448,6 +470,23 @@ function renderChats(chats) {
 
       document.addEventListener("click", () => {
         dropdown.classList.remove("show");
+      });
+
+      const profileBtn = chatItem.querySelector(".profile-btn");
+      const deleteBtn = chatItem.querySelector(".delete-btn");
+
+      profileBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+
+        let user;
+
+        if(chat.isGroupChat){
+          openManageGroupModal(chat);
+        } else {
+          user = chat.users.find( u => u._id !== currentUserId);
+          openProfileModal(user);
+        }
+
       })
 
     chatItem.addEventListener("click", () => {
@@ -504,4 +543,51 @@ async function loadMessages(chatId) {
   } catch (err) {
     console.log("Error to load messages.", err.message);
   }
+}
+
+function openProfileModal(user){
+  const modal = document.getElementById("profileModal");
+
+  document.getElementById("profileModalAvatar").src = user.avatar;
+  document.getElementById("profileModalFullName").textContent = user.fullName;
+  document.getElementById("profileModalUsername").textContent = user.userName;
+  document.getElementById("profileModalEmail").textContent = user.email;
+
+  modal.classList.add("active");
+}
+
+function openManageGroupModal(chat){
+  const modal = document.getElementById("manageGroupModal");
+
+  document.getElementById("manageGroupAvatar").src = chat.avatar || "../images/profile.png";
+  document.getElementById("manageGroupTitle").textContent = chat.chatName;
+
+  const memberList = document.getElementById("groupMembersList");
+  memberList.innerHTML = "";
+
+  chat.users.forEach(user => {
+    const memberDiv = document.createElement("div");
+    const isAdmin = chat.groupAdmin === user._id;
+
+    memberDiv.classList.add("group-member-item");
+     memberDiv.innerHTML = `
+        <div class="member-left">
+      <img src="${user.avatar || '../images/profile.png'}" />
+      <div class="member-info">
+        <span class="member-name">${user.fullName}</span>
+        ${isAdmin ? `<span class="admin-badge">Admin</span>` : ""}
+      </div>
+    </div>
+
+    ${
+      !isAdmin
+        ? `<button class="remove-member-btn" data-id="${user._id}">Remove</button>`
+        : ""
+    }
+  `;
+
+    memberList.appendChild(memberDiv);
+  });
+
+  modal.classList.add("active");
 }
