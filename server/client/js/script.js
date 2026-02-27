@@ -48,17 +48,21 @@ function setUpEventListeners() {
     const modal1 = document.getElementById("profileModal");
     const modal2 = document.getElementById("manageGroupModal");
 
-    if(e.target === modal1){
+    if (e.target === modal1) {
       modal1.classList.remove("active");
-    } else if(e.target === modal2){
+    } else if (e.target === modal2) {
       modal2.classList.remove("active");
     }
   });
 
-  document.getElementById("closeManageGroupModal").addEventListener("click", () => {
-    const modal = document.getElementById("manageGroupModal");
-    modal.classList.remove("active");
-  })
+  document
+    .getElementById("closeManageGroupModal")
+    .addEventListener("click", () => {
+      const modal = document.getElementById("manageGroupModal");
+      modal.classList.remove("active");
+    });
+
+    document.getElementById("groupAvatarInput").addEventListener("click", manageGroupAvatar);
 }
 
 async function loadMyProfile() {
@@ -425,6 +429,7 @@ function renderChats(chats) {
   chats.forEach((chat) => {
     const chatItem = document.createElement("div");
     chatItem.classList.add("user-item");
+    chatItem.dataset.chatId = chat._id;
 
     let displayChatName;
     let displayAvatar;
@@ -455,39 +460,38 @@ function renderChats(chats) {
         </div>
         `;
 
-      const dotBtn = chatItem.querySelector(".dots-btn");
-      const dropdown = chatItem.querySelector(".dropdown-menu");
+    const dotBtn = chatItem.querySelector(".dots-btn");
+    const dropdown = chatItem.querySelector(".dropdown-menu");
 
-      dotBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
+    dotBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
 
-        document.querySelectorAll(".dropdown-menu").forEach(menu => {
-          if(menu !== dropdown) menu.classList.remove("show");
-        });
-
-        dropdown.classList.toggle("show");
+      document.querySelectorAll(".dropdown-menu").forEach((menu) => {
+        if (menu !== dropdown) menu.classList.remove("show");
       });
 
-      document.addEventListener("click", () => {
-        dropdown.classList.remove("show");
-      });
+      dropdown.classList.toggle("show");
+    });
 
-      const profileBtn = chatItem.querySelector(".profile-btn");
-      const deleteBtn = chatItem.querySelector(".delete-btn");
+    document.addEventListener("click", () => {
+      dropdown.classList.remove("show");
+    });
 
-      profileBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
+    const profileBtn = chatItem.querySelector(".profile-btn");
+    const deleteBtn = chatItem.querySelector(".delete-btn");
 
-        let user;
+    profileBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
 
-        if(chat.isGroupChat){
-          openManageGroupModal(chat);
-        } else {
-          user = chat.users.find( u => u._id !== currentUserId);
-          openProfileModal(user);
-        }
+      let user;
 
-      })
+      if (chat.isGroupChat) {
+        openManageGroupModal(chat);
+      } else {
+        user = chat.users.find((u) => u._id !== currentUserId);
+        openProfileModal(user);
+      }
+    });
 
     chatItem.addEventListener("click", () => {
       openExistingChat(chat);
@@ -545,7 +549,7 @@ async function loadMessages(chatId) {
   }
 }
 
-function openProfileModal(user){
+function openProfileModal(user) {
   const modal = document.getElementById("profileModal");
 
   document.getElementById("profileModalAvatar").src = user.avatar;
@@ -556,23 +560,25 @@ function openProfileModal(user){
   modal.classList.add("active");
 }
 
-function openManageGroupModal(chat){
+function openManageGroupModal(chat) {
   const modal = document.getElementById("manageGroupModal");
+  modal.dataset.chatId = chat._id;
 
-  document.getElementById("manageGroupAvatar").src = chat.avatar || "../images/profile.png";
+  document.getElementById("manageGroupAvatar").src =
+    chat.avatar || "../images/profile.png";
   document.getElementById("manageGroupTitle").textContent = chat.chatName;
 
   const memberList = document.getElementById("groupMembersList");
   memberList.innerHTML = "";
 
-  chat.users.forEach(user => {
+  chat.users.forEach((user) => {
     const memberDiv = document.createElement("div");
     const isAdmin = chat.groupAdmin === user._id;
 
     memberDiv.classList.add("group-member-item");
-     memberDiv.innerHTML = `
+    memberDiv.innerHTML = `
         <div class="member-left">
-      <img src="${user.avatar || '../images/profile.png'}" />
+      <img src="${user.avatar || "../images/profile.png"}" />
       <div class="member-info">
         <span class="member-name">${user.fullName}</span>
         ${isAdmin ? `<span class="admin-badge">Admin</span>` : ""}
@@ -586,8 +592,95 @@ function openManageGroupModal(chat){
     }
   `;
 
+    const removeBtn = memberDiv.querySelector(".remove-member-btn");
+
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeGroupMemeber(chat._id, user._id, memberDiv);
+    });
+
     memberList.appendChild(memberDiv);
   });
 
   modal.classList.add("active");
+}
+
+async function removeGroupMemeber(chatId, userId, element) {
+  try {
+    const response = await fetch(`${Base_URL}/chat/remove-from-groupchat`, {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ chatId, userId }),
+    });
+
+    if (userId === currentUserId) {
+      document.getElementById("manageGroupModal").classList.remove("active");
+
+      alert("You were removed from the group");
+
+      await fetchChat();
+    }
+
+    if (!response.ok) {
+      console.log("Failed t0 remove member from group.");
+      return;
+    }
+
+    element.classList.add("removing");
+
+    setTimeout(() => {
+      element.remove();
+    }, 300);
+
+  } catch (err) {
+    console.log("Error to remove member from group.", err.message);
+  }
+};
+
+async function manageGroupAvatar(e){
+  const file = e.target.files[0];
+  const chatId = document.getElementById("manageGroupModal").dataset.chatId
+
+  if(!file) return;
+  
+  const formData = new FormData();
+  formData.append("avatar", file);
+  formData.append("chatId", chatId);
+
+  try {
+    const response = await fetch(`${Base_URL}/chat/update-avatar`, {
+      method: "PUT",
+      credentials: "include",
+      body: formData
+    });
+
+    if(!response.ok){
+      console.log("Failed to change group avatar.");
+      return;
+    }
+
+    const data = await response.json();
+    const avatar = data.data.avatar;
+
+    document.getElementById("manageGroupAvatar").src = avatar;
+
+    if(activateChatId === data.data._id){
+      document.getElementById("chatAvatar").src = avatar;
+    }
+
+    const chatItem = document.querySelector(
+      `.user-item[data-chat-id="${data.data._id}"]`
+    );
+
+    if (chatItem) {
+      const img = chatItem.querySelector("img");
+      if (img) img.src = avatar;
+    }
+
+  } catch (err) {
+    console.log("Error to change group avatar.", err.message);
+  }
 }

@@ -879,3 +879,11 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
 }
+
+/* Smooth removal animation */
+
+.group-member-item.removing {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: 0.3s ease;
+}

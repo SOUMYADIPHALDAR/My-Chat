@@ -5,6 +5,8 @@ const Chat = require("../models/chat.model.js");
 const User = require("../models/user.model.js");
 const Message = require("../models/message.model.js");
 const { userInChat, isGroupAdmin } = require("../utils/chatPermission.js");
+const cloudinary = require("cloudinary");
+const uploadImageToCloudinary = require("../config/cloudinary.js");
 
 const accessChat = asyncHandler(async (req, res) => {
   const { chatName, isGroupChat, userId, members } = req.body;
@@ -187,6 +189,58 @@ const renameGroup = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, updateChat, "Renamed group successfully.."));
 });
 
+const changeGroupAvatar = asyncHandler(async(req, res) => {
+  const {chatId} = req.body;
+  if(!chatId){
+    throw new apiError(400, "Chat id is required");
+  }
+
+  const chat = await Chat.findById(chatId);
+
+  if(!chat){
+    throw new apiError(404, "No such chat found..");
+  }
+
+  if(!chat.isGroupChat){
+    throw new apiError(400, "It should be a group chat..");
+  }
+
+  const avatarLocalPath = req.file?.path;
+  if(!avatarLocalPath){
+    throw new apiError(404, "Avatar file path is required..");
+  }
+
+  if(chat.avatarPublicId){
+    try {
+      await cloudinary.uploader.destroy(chat.avatarPublicId, {
+        resource_type: "image"
+      });
+    } catch (err) {
+      throw new apiError(500, "Failed to change avatar...", err.message);
+    }
+  }
+
+  const avatar = await uploadImageToCloudinary(avatarLocalPath);
+  if(!avatar.secure_url || !avatar.public_id){
+    throw new apiError(400, "something happend to change the avatar..");
+  }
+
+  const updatedChat = await Chat.findByIdAndUpdate(
+    chatId, 
+    {
+      $set: {
+        avatar: avatar.secure_url,
+        avatarPublicId: avatar.public_id
+      }
+    },
+    { new: true }
+  );
+
+  return res.status(200).json(
+    new apiResponse(200, updatedChat, "Changed the avatar successfully..")
+  )
+});
+
 const addToGroupChat = asyncHandler(async (req, res) => {
   const { chatId, users } = req.body;
   if (!chatId || !users) {
@@ -278,6 +332,7 @@ module.exports = {
   deleteChat,
   createGroupChat,
   renameGroup,
+  changeGroupAvatar,
   addToGroupChat,
   removeFromGroupChat,
   deleteGroupChat,
