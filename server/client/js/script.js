@@ -80,6 +80,7 @@ async function loadGroupUsers() {
 
     const selectedUsers = document.getElementById("selectedMembers");
     selectedUsers.innerHTML = "";
+    userSearch.innerHTML = "";
 
     if (!users || users.length === 0) {
       selectedUsers.innerHTML = "<p>No user found</p>";
@@ -209,7 +210,7 @@ function closeGroups() {
 
 async function createGroup(){
   try {
-    const groupName = document.getElementById("groupName");
+    const groupName = document.getElementById("groupName").value.trim();
 
     if(!groupName){
       console.log("Group name is required..");
@@ -223,16 +224,36 @@ async function createGroup(){
 
     const members = selectedGroupMembers.map(user => user._id);
 
-    const response = await fetch(`${Base_URL}/user/accessChat`, {
+    const response = await fetch(`${Base_URL}/chat/accessChat`, {
       method: "POST",
       credentials: "include",
       headers: {
         "content-type": "application/json"
       },
-      body: {
+      body: JSON.stringify({
+        chatName: groupName,
+        members,
+        isGroupChat: true
+      })
+    });
 
-      }
+    if(!response.ok){
+      console.log("Failed to create group.");
+      return;
+    }
+
+    const data = await response.json();
+    const group = data.data;
+    console.log(group);
+
+    socket.emit("join-room", {
+      roomId: group._id
     })
+
+    await fetchChat();
+    closeGroups();
+    selectedGroupMembers = [];
+    renderSelectedUser();
 
   } catch (err) {
     console.log("Error to create groups.", err.message);
@@ -256,7 +277,10 @@ async function openChat(user) {
         "content-type": "application/json",
       },
       credentials: "include",
-      body: JSON.stringify({ userId: otherUserId }),
+      body: JSON.stringify({
+        userId: otherUserId,
+        isGroupChat: false 
+      })
     });
 
     const data = await response.json();
@@ -376,15 +400,27 @@ function renderChats(chats) {
   }
 
   chats.forEach((chat) => {
-    const otherUser = chat.users.find((user) => user._id != currentUserId);
 
     const chatItem = document.createElement("div");
     chatItem.classList.add("user-item");
 
+    let displayChatName;
+    let displayAvatar;
+
+    if(chat.isGroupChat){
+      displayChatName = chat.chatName;
+      displayAvatar = chat.avatar || "../images/profile.png";
+    } else {
+      const otherUser = chat.users.find((user) => user._id != currentUserId);
+
+      displayChatName = otherUser.fullName;
+      displayAvatar = otherUser.avatar;
+    }
+
     chatItem.innerHTML = `
-         <img src="${otherUser.avatar}" />
+         <img src="${displayAvatar}" />
          <div>
-            <strong>${otherUser.fullName}</strong>
+            <strong>${displayChatName}</strong>
             <p>${chat.latestMessage?.message || ""}</p>
          </div>
         `;
@@ -398,10 +434,19 @@ function renderChats(chats) {
 }
 
 async function openExistingChat(chat) {
-  const otherUser = chat.users.find((user) => user._id != currentUserId);
 
-  document.getElementById("chatAvatar").src = otherUser.avatar;
-  document.getElementById("chatUserName").textContent = otherUser.fullName;
+  let chatAvatar = document.getElementById("chatAvatar");
+  let chatUserName = document.getElementById("chatUserName");
+
+  if(chat.isGroupChat){
+    chatUserName = chat.chatName;
+    chatAvatar = chat.avatar ||  "../images/profile.png";
+  } else {
+    const otherUser = chat.users.find(user => user._id != currentUserId);
+
+    chatUserName = otherUser.fullName;
+    chatAvatar = otherUser.avatar;
+  }
 
   activateChatId = chat._id;
 
