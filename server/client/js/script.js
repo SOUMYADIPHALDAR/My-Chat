@@ -62,7 +62,29 @@ function setUpEventListeners() {
       modal.classList.remove("active");
     });
 
-    document.getElementById("groupAvatarInput").addEventListener("click", manageGroupAvatar);
+  document.getElementById("groupAvatarInput").addEventListener("click", manageGroupAvatar);
+
+  const openAddMemberBtn = document.getElementById("openAddMemberBtn");
+  if(openAddMemberBtn){
+    openAddMemberBtn.addEventListener("click", () => {
+      const container = document.getElementById("addMemberContainer");
+
+      if(container.style.display === "none"){
+        container.style.display = "block";
+      } else {
+        container.style.display = "none";
+      }
+    });
+  }
+
+  const addMemberSearch = document.getElementById("addMemberSearch");
+  if(addMemberSearch){
+    addMemberSearch.addEventListener("keypress", (e) => {
+      if(e.key === "Enter"){
+        loadUsersForAdding();
+      }
+    })
+  }
 }
 
 async function loadMyProfile() {
@@ -421,7 +443,7 @@ function renderChats(chats) {
   const usersList = document.getElementById("usersList");
   usersList.innerHTML = "";
 
-  if (!chats || !chats.length === 0) {
+  if (!chats || chats.length === 0) {
     usersList.innerHTML = "<p>You don't even start chatting.</p>";
     return;
   }
@@ -492,6 +514,11 @@ function renderChats(chats) {
         openProfileModal(user);
       }
     });
+
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteChat(chat._id);
+    })
 
     chatItem.addEventListener("click", () => {
       openExistingChat(chat);
@@ -683,4 +710,80 @@ async function manageGroupAvatar(e){
   } catch (err) {
     console.log("Error to change group avatar.", err.message);
   }
+};
+
+async function deleteChat(chatId){
+  try {
+    const response = await fetch(`${Base_URL}/chat/deletechat/${chatId}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+
+    if(!response.ok){
+      console.log("Failed to delete chat.");
+      return;
+    }
+    
+    await fetchChat();
+    if(activateChatId === chatId){
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("chatUserName").textContent = "Select a chat";
+      document.getElementById("chatAvatar").src = "../images/profile.png";
+    }
+
+  } catch (err) {
+    console.log("Error to delete chats.", err.message);
+  }
+};
+
+async function loadUsersForAdding(){
+  const query = document.getElementById("addMemberSearch").value.trim();
+
+  if(!query){
+    console.log("Query is needed..");
+    return;
+  }
+
+  const chatId = document.getElementById("manageGroupModal").dataset.chatId;
+
+  try {
+    const response = await fetch(`${Base_URL}/user/search?query=${encodeURIComponent(query)}`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if(!response.ok){
+      console.log("Failed to load users for group.");
+      return;
+    }
+
+    const data = await response.json();
+    const users = data.data;
+    
+    const results = document.getElementById("addMemberResults");
+    results.innerHTML = "";
+
+    users.forEach((user) => {
+      const userDiv = document.createElement("div");
+      userDiv.classList.add("user-item");
+
+      userDiv.innerHTML = `
+      <img src="${user.avatar || "../images/profile.png"}" />
+      <span>${user.fullName}</span>
+      `;
+
+      userDiv.addEventListener("click", () => {
+        addUsersToGroup(chatId, user._id);
+      });
+
+      results.appendChild(userDiv);
+    })
+
+  } catch (err) {
+    console.log("Error to load users for group.", err.message);
+  }
+};
+
+async function addUsersToGroup(chatId, userId){
+  
 }

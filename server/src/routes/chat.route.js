@@ -9,7 +9,6 @@ const {
     addToGroupChat,
     removeFromGroupChat,
     deleteChat,
-    deleteGroupChat
 } = require("../controllers/chat.controller.js");
 const verifyJwt = require("../middlewares/auth.middleware.js");
 const upload = require("../middlewares/multer.middleware.js");
@@ -22,6 +21,5 @@ router.put("/renamegroup/:chatId", verifyJwt, renameGroup);
 router.put("/update-avatar", verifyJwt, upload.single("avatar"), changeGroupAvatar);
 router.put("/add-to-groupchat", verifyJwt, addToGroupChat);
 router.put("/remove-from-groupchat", verifyJwt, removeFromGroupChat);
-router.delete("/delete-groupchat/:chatId", verifyJwt, deleteGroupChat);
 
 module.exports = router;

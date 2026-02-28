@@ -242,22 +242,30 @@ const changeGroupAvatar = asyncHandler(async(req, res) => {
 });
 
 const addToGroupChat = asyncHandler(async (req, res) => {
-  const { chatId, users } = req.body;
-  if (!chatId || !users) {
+  const { chatId, userId } = req.body;
+  if (!chatId || !userId) {
     throw new apiError(400, "chatId and userId are required..");
   }
 
   await isGroupAdmin(chatId, req.user._id);
 
-  let usersArray = Array.isArray(users) ? users : JSON.parse(users);
-  usersArray = usersArray.filter(
-    (id) => id.toString() !== req.user._id.toString()
-  );
+  const chat = await Chat.findById(chatId);
+  if(!chat){
+    throw new apiError(404, "No such chat found..");
+  }
 
-  const chat = await Chat.findByIdAndUpdate(
+  const alreadyMember = chat.users.some(
+    member => member.toString() === userId
+  )
+
+  if(alreadyMember){
+    throw new apiError(404, "User already in group..");
+  }
+
+  const updatedChat = await Chat.findByIdAndUpdate(
     chatId,
     {
-      $addToSet: { users: { $each: usersArray } },
+      $addToSet: { users: userId },
     },
     { new: true }
   )
@@ -266,7 +274,7 @@ const addToGroupChat = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new apiResponse(200, chat, "Successfully added to the group chat.."));
+    .json(new apiResponse(200, updatedChat, "Successfully added to the group chat.."));
 });
 
 const removeFromGroupChat = asyncHandler(async (req, res) => {
@@ -303,29 +311,6 @@ const removeFromGroupChat = asyncHandler(async (req, res) => {
     );
 });
 
-const deleteGroupChat = asyncHandler(async (req, res) => {
-  const { chatId } = req.params;
-
-  if (!chatId) {
-    throw new apiError(400, "Chat id is required..");
-  }
-
-  const chat = await Chat.findById(chatId);
-  if (!chat) {
-    throw new apiError(404, "No chat found..");
-  }
-
-  await isGroupAdmin(chatId, req.user._id);
-
-  await Message.deleteMany({ chat: chatId });
-
-  await Chat.findByIdAndDelete(chatId);
-
-  return res
-    .status(200)
-    .json(new apiResponse(200, "", "Group chat deleted successfully.."));
-});
-
 module.exports = {
   accessChat,
   fetchChats,
@@ -335,5 +320,4 @@ module.exports = {
   changeGroupAvatar,
   addToGroupChat,
   removeFromGroupChat,
-  deleteGroupChat,
 };

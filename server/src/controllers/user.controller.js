@@ -157,7 +157,7 @@ const getMyProfile = asyncHandler(async(req, res) => {
 
 const searchUsers = asyncHandler(async (req, res) => {
   const query = req.query.query;
-
+  
   if (!query) {
     throw new apiError(400, "No search query provided");
   }
