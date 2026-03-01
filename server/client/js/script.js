@@ -62,14 +62,16 @@ function setUpEventListeners() {
       modal.classList.remove("active");
     });
 
-  document.getElementById("groupAvatarInput").addEventListener("click", manageGroupAvatar);
+  document
+    .getElementById("groupAvatarInput")
+    .addEventListener("click", manageGroupAvatar);
 
   const openAddMemberBtn = document.getElementById("openAddMemberBtn");
-  if(openAddMemberBtn){
+  if (openAddMemberBtn) {
     openAddMemberBtn.addEventListener("click", () => {
       const container = document.getElementById("addMemberContainer");
 
-      if(container.style.display === "none"){
+      if (container.style.display === "none") {
         container.style.display = "block";
       } else {
         container.style.display = "none";
@@ -78,12 +80,12 @@ function setUpEventListeners() {
   }
 
   const addMemberSearch = document.getElementById("addMemberSearch");
-  if(addMemberSearch){
+  if (addMemberSearch) {
     addMemberSearch.addEventListener("keypress", (e) => {
-      if(e.key === "Enter"){
+      if (e.key === "Enter") {
         loadUsersForAdding();
       }
-    })
+    });
   }
 }
 
@@ -518,7 +520,7 @@ function renderChats(chats) {
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       deleteChat(chat._id);
-    })
+    });
 
     chatItem.addEventListener("click", () => {
       openExistingChat(chat);
@@ -661,18 +663,17 @@ async function removeGroupMemeber(chatId, userId, element) {
     setTimeout(() => {
       element.remove();
     }, 300);
-
   } catch (err) {
     console.log("Error to remove member from group.", err.message);
   }
-};
+}
 
-async function manageGroupAvatar(e){
+async function manageGroupAvatar(e) {
   const file = e.target.files[0];
-  const chatId = document.getElementById("manageGroupModal").dataset.chatId
+  const chatId = document.getElementById("manageGroupModal").dataset.chatId;
 
-  if(!file) return;
-  
+  if (!file) return;
+
   const formData = new FormData();
   formData.append("avatar", file);
   formData.append("chatId", chatId);
@@ -681,10 +682,10 @@ async function manageGroupAvatar(e){
     const response = await fetch(`${Base_URL}/chat/update-avatar`, {
       method: "PUT",
       credentials: "include",
-      body: formData
+      body: formData,
     });
 
-    if(!response.ok){
+    if (!response.ok) {
       console.log("Failed to change group avatar.");
       return;
     }
@@ -694,52 +695,50 @@ async function manageGroupAvatar(e){
 
     document.getElementById("manageGroupAvatar").src = avatar;
 
-    if(activateChatId === data.data._id){
+    if (activateChatId === data.data._id) {
       document.getElementById("chatAvatar").src = avatar;
     }
 
     const chatItem = document.querySelector(
-      `.user-item[data-chat-id="${data.data._id}"]`
+      `.user-item[data-chat-id="${data.data._id}"]`,
     );
 
     if (chatItem) {
       const img = chatItem.querySelector("img");
       if (img) img.src = avatar;
     }
-
   } catch (err) {
     console.log("Error to change group avatar.", err.message);
   }
-};
+}
 
-async function deleteChat(chatId){
+async function deleteChat(chatId) {
   try {
     const response = await fetch(`${Base_URL}/chat/deletechat/${chatId}`, {
       method: "DELETE",
-      credentials: "include"
+      credentials: "include",
     });
 
-    if(!response.ok){
+    if (!response.ok) {
       console.log("Failed to delete chat.");
       return;
     }
-    
+
     await fetchChat();
-    if(activateChatId === chatId){
+    if (activateChatId === chatId) {
       document.getElementById("messages").innerHTML = "";
       document.getElementById("chatUserName").textContent = "Select a chat";
       document.getElementById("chatAvatar").src = "../images/profile.png";
     }
-
   } catch (err) {
     console.log("Error to delete chats.", err.message);
   }
-};
+}
 
-async function loadUsersForAdding(){
+async function loadUsersForAdding() {
   const query = document.getElementById("addMemberSearch").value.trim();
 
-  if(!query){
+  if (!query) {
     console.log("Query is needed..");
     return;
   }
@@ -747,43 +746,73 @@ async function loadUsersForAdding(){
   const chatId = document.getElementById("manageGroupModal").dataset.chatId;
 
   try {
-    const response = await fetch(`${Base_URL}/user/search?query=${encodeURIComponent(query)}`, {
-      method: "GET",
-      credentials: "include",
-    });
+    const response = await fetch(
+      `${Base_URL}/user/search?query=${encodeURIComponent(query)}`,
+      {
+        method: "GET",
+        credentials: "include",
+      },
+    );
 
-    if(!response.ok){
+    if (!response.ok) {
       console.log("Failed to load users for group.");
       return;
     }
 
     const data = await response.json();
-    const users = data.data;
+    const users = data.data.data;
     
     const results = document.getElementById("addMemberResults");
     results.innerHTML = "";
 
-    users.forEach((user) => {
-      const userDiv = document.createElement("div");
-      userDiv.classList.add("user-item");
+   users.forEach(user => {
+  const userDiv = document.createElement("div");
+  userDiv.classList.add("search-result-item");
 
-      userDiv.innerHTML = `
+  userDiv.innerHTML = `
+    <div class="search-result-left">
       <img src="${user.avatar || "../images/profile.png"}" />
-      <span>${user.fullName}</span>
-      `;
+      <div class="search-result-info">
+        <span class="search-result-name">${user.fullName}</span>
+        <span class="search-result-username">@${user.userName}</span>
+      </div>
+    </div>
 
-      userDiv.addEventListener("click", () => {
-        addUsersToGroup(chatId, user._id);
-      });
+    <button class="add-member-btn-small">Add</button>
+  `;
 
-      results.appendChild(userDiv);
-    })
+  userDiv.addEventListener("click", () => {
+    addUsersToGroup(chatId, user._id);
+  })
 
+  results.appendChild(userDiv);
+});
   } catch (err) {
     console.log("Error to load users for group.", err.message);
   }
-};
+}
 
-async function addUsersToGroup(chatId, userId){
-  
+async function addUsersToGroup(chatId, userId) {
+  try {
+    const response = await fetch(`${Base_URL}/chat/add-to-groupchat`, {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ chatId, userId }),
+    });
+
+    if (!response.ok) {
+      console.log("Failed to add new users..");
+      return;
+    }
+
+    const data = await response.json();
+    const updatedChat = data.data;
+
+    openManageGroupModal(updatedChat);
+  } catch (err) {
+    console.log("Error to add new users.", err.message);
+  }
 }
